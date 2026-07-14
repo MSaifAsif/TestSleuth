@@ -14,6 +14,7 @@
 
     <modules>
         <module>testsleuth-core</module>
+        <module>testsleuth-junit5</module>
         <module>testsleuth-report</module>
         <module>testsleuth-maven-plugin</module>
     </modules>
@@ -25,6 +26,7 @@
         <maven.plugin.api.version>3.9.8</maven.plugin.api.version>
         <maven.plugin.annotations.version>3.13.1</maven.plugin.annotations.version>
         <junit.jupiter.version>5.10.3</junit.jupiter.version>
+        <junit.platform.version>1.10.3</junit.platform.version>
     </properties>
 
     <dependencyManagement>
@@ -40,10 +42,20 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>dev.testsleuth</groupId>
+                <artifactId>testsleuth-junit5</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>${junit.jupiter.version}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>${junit.platform.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -65,6 +77,14 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <propertiesEncoding>${project.build.sourceEncoding}</propertiesEncoding>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>

@@ -8,16 +8,22 @@ The first implementation milestone is a buildable repository foundation that ref
 - Java 17 release target.
 - Core event model package.
 - Core finding model package.
+- JSON event export.
+- JUnit Platform listener for discovered, started, and finished test events.
 - Basic HTML report renderer.
 - Maven plugin shell with a `testsleuth:report` goal.
+- Maven plugin `testsleuth:instrument` goal for JUnit listener setup.
+- Surefire and Failsafe XML report scanning for initial event generation.
+- Merged report event output from JUnit lifecycle files and Maven XML reports.
+- First timing-based Maven detector for slow observed tests.
+- Configurable slow-test thresholds, finding limits, detector flags, and console verbosity.
+- CI-oriented console summary from the Maven report goal.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
-- GitHub Actions build workflow.
 
 ## Next
 
 1. Extend the event schema with build-run, module, worker, fork, and process identifiers.
-2. Define JSON serialization for event export.
-3. Add a `testsleuth-junit5` module for lifecycle collection.
-4. Make the Maven plugin inject the collector into Surefire and Failsafe.
-5. Add intentionally slow sample projects under a benchmark or samples module.
-
+2. Add intentionally slow sample projects under a benchmark or samples module.
+3. Reconcile collector events with Maven XML report events.
+4. Add stable build-run, module, worker, fork, and process identifiers.
+5. Start detector APIs outside the Maven plugin module.

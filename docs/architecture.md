@@ -18,12 +18,12 @@ Collectors emit normalized facts. Detectors consume those facts later and produc
 ## Initial Modules
 
 - `testsleuth-core`: immutable event and finding model.
+- `testsleuth-junit5`: JUnit Platform lifecycle listener.
 - `testsleuth-report`: report model and rendering entry points.
 - `testsleuth-maven-plugin`: Maven plugin shell and future Surefire/Failsafe integration point.
 
 ## Pending Modules
 
-- `testsleuth-junit5`
 - `testsleuth-spring`
 - `testsleuth-testcontainers`
 - `testsleuth-flyway`
@@ -33,4 +33,3 @@ Collectors emit normalized facts. Detectors consume those facts later and produc
 - `testsleuth-cli`
 - `testsleuth-benchmarks`
 - `testsleuth-samples`
-
