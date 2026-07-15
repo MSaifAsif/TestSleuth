@@ -1,6 +1,7 @@
 package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.EventJsonWriter;
+import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
@@ -27,18 +28,26 @@ final class MavenTestInstrumentation {
     private static final String FAILSAFE_ARTIFACT_ID = "maven-failsafe-plugin";
     private static final String DEFAULT_TEST_PLUGIN_VERSION = "3.2.5";
 
-    Result apply(MavenProject project, Properties userProperties, Path eventsFile, String testSleuthVersion) {
+    Result apply(
+            MavenProject project,
+            Properties userProperties,
+            Path eventsFile,
+            String testSleuthVersion,
+            TestSleuthRunContext runContext
+    ) {
         Objects.requireNonNull(project, "project");
         Objects.requireNonNull(userProperties, "userProperties");
         Objects.requireNonNull(eventsFile, "eventsFile");
+        Objects.requireNonNull(runContext, "runContext");
         requireText(testSleuthVersion, "testSleuthVersion");
 
         boolean dependencyAdded = ensureJUnit5Dependency(project, testSleuthVersion);
         userProperties.setProperty(JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
         userProperties.setProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
+        setUserProperties(userProperties, runContext);
         appendAdditionalClasspath(userProperties);
-        configureTestPlugin(project, SUREFIRE_ARTIFACT_ID, eventsFile, testSleuthVersion);
-        configureTestPlugin(project, FAILSAFE_ARTIFACT_ID, eventsFile, testSleuthVersion);
+        configureTestPlugin(project, SUREFIRE_ARTIFACT_ID, eventsFile, testSleuthVersion, runContext);
+        configureTestPlugin(project, FAILSAFE_ARTIFACT_ID, eventsFile, testSleuthVersion, runContext);
 
         return new Result(dependencyAdded, eventsFile);
     }
@@ -65,13 +74,15 @@ final class MavenTestInstrumentation {
             MavenProject project,
             String artifactId,
             Path eventsFile,
-            String testSleuthVersion
+            String testSleuthVersion,
+            TestSleuthRunContext runContext
     ) {
         Plugin plugin = findOrCreateBuildPlugin(project, artifactId);
         Xpp3Dom configuration = configuration(plugin);
         Xpp3Dom systemProperties = child(configuration, "systemPropertyVariables");
         setChildValue(systemProperties, JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
         setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
+        setContextSystemProperties(systemProperties, runContext);
 
         Xpp3Dom dependencies = child(configuration, "additionalClasspathDependencies");
         if (!hasTestSleuthDependency(dependencies)) {
@@ -140,6 +151,25 @@ final class MavenTestInstrumentation {
             }
         }
         return false;
+    }
+
+    private static void setUserProperties(Properties userProperties, TestSleuthRunContext runContext) {
+        userProperties.setProperty(TestSleuthRunContext.BUILD_RUN_ID_PROPERTY, runContext.buildRunId());
+        userProperties.setProperty(TestSleuthRunContext.MODULE_ID_PROPERTY, runContext.moduleId());
+        userProperties.setProperty(TestSleuthRunContext.PROJECT_GROUP_ID_PROPERTY, runContext.projectGroupId());
+        userProperties.setProperty(TestSleuthRunContext.PROJECT_ARTIFACT_ID_PROPERTY, runContext.projectArtifactId());
+        userProperties.setProperty(TestSleuthRunContext.PROJECT_VERSION_PROPERTY, runContext.projectVersion());
+        userProperties.setProperty(TestSleuthRunContext.PROJECT_BASE_DIR_PROPERTY, runContext.projectBaseDir());
+    }
+
+    private static void setContextSystemProperties(Xpp3Dom systemProperties, TestSleuthRunContext runContext) {
+        setChildValue(systemProperties, TestSleuthRunContext.BUILD_RUN_ID_PROPERTY, runContext.buildRunId());
+        setChildValue(systemProperties, TestSleuthRunContext.MODULE_ID_PROPERTY, runContext.moduleId());
+        setChildValue(systemProperties, TestSleuthRunContext.PROJECT_GROUP_ID_PROPERTY, runContext.projectGroupId());
+        setChildValue(systemProperties, TestSleuthRunContext.PROJECT_ARTIFACT_ID_PROPERTY, runContext.projectArtifactId());
+        setChildValue(systemProperties, TestSleuthRunContext.PROJECT_VERSION_PROPERTY, runContext.projectVersion());
+        setChildValue(systemProperties, TestSleuthRunContext.PROJECT_BASE_DIR_PROPERTY, runContext.projectBaseDir());
+        setChildValue(systemProperties, TestSleuthRunContext.FORK_NUMBER_PROPERTY, "${surefire.forkNumber}");
     }
 
     private static void appendAdditionalClasspath(Properties userProperties) {

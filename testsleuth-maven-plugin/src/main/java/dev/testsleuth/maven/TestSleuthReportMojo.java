@@ -1,10 +1,11 @@
 package dev.testsleuth.maven;
 
-import dev.testsleuth.core.event.EventJsonWriter;
+import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.finding.Finding;
 import dev.testsleuth.report.HtmlReportRenderer;
 import dev.testsleuth.report.HtmlReportRenderer.ReportModel;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Build;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -26,6 +27,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
+
+    @Parameter(defaultValue = "${session}", readonly = true, required = true)
+    private MavenSession session;
 
     @Parameter(property = "testsleuth.console.enabled", defaultValue = "true")
     private boolean consoleEnabled;
@@ -52,8 +56,10 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         Path report = output.resolve("index.html");
         Path events = output.resolve("events.json");
         Path junitEvents = output.resolve("junit-events.json");
+        TestSleuthRunContext runContext = new MavenRunContextFactory()
+                .loadOrCreate(output, project, session.getUserProperties());
 
-        MavenTestReportScanner.ScanResult scanResult = scanTestReports();
+        MavenTestReportScanner.ScanResult scanResult = scanTestReports(runContext);
         TestSleuthEventJsonMerger.EventJson mergedEvents = new TestSleuthEventJsonMerger()
                 .merge(junitEvents, scanResult.events());
         List<Finding> findings = new MavenTimingFindings(config).detect(scanResult.events());
@@ -100,14 +106,14 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         }
     }
 
-    private MavenTestReportScanner.ScanResult scanTestReports() throws MojoExecutionException {
+    private MavenTestReportScanner.ScanResult scanTestReports(TestSleuthRunContext runContext) throws MojoExecutionException {
         Build build = project.getBuild();
         if (build == null || build.getDirectory() == null || build.getDirectory().isBlank()) {
             throw new MojoExecutionException("Unable to locate Maven build directory");
         }
 
         Path buildDirectory = Path.of(build.getDirectory());
-        return new MavenTestReportScanner().scan(List.of(
+        return new MavenTestReportScanner(runContext).scan(List.of(
                 buildDirectory.resolve("surefire-reports"),
                 buildDirectory.resolve("failsafe-reports")
         ));

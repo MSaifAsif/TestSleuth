@@ -4,6 +4,7 @@ import dev.testsleuth.core.event.EventId;
 import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.Subject;
 import dev.testsleuth.core.event.SubjectType;
+import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.event.TestSubjectIdentity;
 import org.w3c.dom.Document;
@@ -24,10 +25,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 final class MavenTestReportScanner {
+    private final TestSleuthRunContext runContext;
+
+    MavenTestReportScanner(TestSleuthRunContext runContext) {
+        this.runContext = Objects.requireNonNull(runContext, "runContext");
+    }
+
     ScanResult scan(List<Path> reportDirectories) {
         List<TestSleuthEvent> events = new ArrayList<>();
 
@@ -77,7 +85,11 @@ final class MavenTestReportScanner {
         }
     }
 
-    private static TestSleuthEvent toEvent(Path reportFile, Element testCase) {
+    private TestSleuthEvent toEvent(Path reportFile, Element testCase) {
+        return toEvent(reportFile, testCase, runContext);
+    }
+
+    private static TestSleuthEvent toEvent(Path reportFile, Element testCase, TestSleuthRunContext runContext) {
         String className = attribute(testCase, "classname", "unknown");
         String testName = attribute(testCase, "name", "unknown");
         String methodName = TestSubjectIdentity.normalizeMethodName(testName);
@@ -92,17 +104,30 @@ final class MavenTestReportScanner {
                 new Subject(SubjectType.TEST_METHOD, subjectId),
                 Instant.EPOCH,
                 0,
-                Map.of(
-                        "collector", "maven-test-report",
-                        "reportFile", reportFile.toString(),
-                        "className", className,
-                        "methodName", methodName,
-                        "testName", testName,
-                        "testIdentity", subjectId,
-                        "status", status,
-                        "durationMillis", durationMillis
-                )
+                attributes(reportFile, className, methodName, testName, subjectId, status, durationMillis, runContext)
         );
+    }
+
+    private static Map<String, String> attributes(
+            Path reportFile,
+            String className,
+            String methodName,
+            String testName,
+            String subjectId,
+            String status,
+            String durationMillis,
+            TestSleuthRunContext runContext
+    ) {
+        java.util.HashMap<String, String> attributes = new java.util.HashMap<>(runContext.attributes());
+        attributes.put("collector", "maven-test-report");
+        attributes.put("reportFile", reportFile.toString());
+        attributes.put("className", className);
+        attributes.put("methodName", methodName);
+        attributes.put("testName", testName);
+        attributes.put("testIdentity", subjectId);
+        attributes.put("status", status);
+        attributes.put("durationMillis", durationMillis);
+        return Map.copyOf(attributes);
     }
 
     private static String status(Element testCase) {

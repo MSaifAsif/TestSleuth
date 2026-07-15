@@ -5,6 +5,7 @@ import dev.testsleuth.core.event.EventJsonWriter;
 import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.Subject;
 import dev.testsleuth.core.event.SubjectType;
+import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.event.TestSubjectIdentity;
 import org.junit.platform.engine.TestExecutionResult;
@@ -28,6 +29,15 @@ import java.util.function.Consumer;
 public final class JUnitLifecycleEventCollector {
     private final List<TestSleuthEvent> events = new ArrayList<>();
     private final Map<String, Long> startedNanos = new HashMap<>();
+    private final TestSleuthRunContext runContext;
+
+    public JUnitLifecycleEventCollector() {
+        this(TestSleuthRunContext.fromSystemProperties());
+    }
+
+    JUnitLifecycleEventCollector(TestSleuthRunContext runContext) {
+        this.runContext = Objects.requireNonNull(runContext, "runContext");
+    }
 
     public void recordDiscoveredTests(TestPlan testPlan) {
         Objects.requireNonNull(testPlan, "testPlan");
@@ -94,8 +104,9 @@ public final class JUnitLifecycleEventCollector {
         }
     }
 
-    private static TestSleuthEvent toEvent(EventKind kind, TestIdentifier testIdentifier, Map<String, String> attributes) {
+    private TestSleuthEvent toEvent(EventKind kind, TestIdentifier testIdentifier, Map<String, String> attributes) {
         Map<String, String> eventAttributes = new HashMap<>();
+        eventAttributes.putAll(runContext.attributes());
         eventAttributes.put("collector", "junit5-listener");
         eventAttributes.put("uniqueId", testIdentifier.getUniqueId());
         eventAttributes.put("displayName", testIdentifier.getDisplayName());

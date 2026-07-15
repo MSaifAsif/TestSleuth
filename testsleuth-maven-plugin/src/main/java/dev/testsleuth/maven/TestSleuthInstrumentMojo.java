@@ -1,5 +1,6 @@
 package dev.testsleuth.maven;
 
+import dev.testsleuth.core.event.TestSleuthRunContext;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Build;
 import org.apache.maven.plugin.AbstractMojo;
@@ -30,13 +31,18 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         }
 
         Path eventsFile = Path.of(build.getDirectory()).resolve("testsleuth").resolve("junit-events.json");
+        Path outputDirectory = eventsFile.getParent();
+        MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
+        TestSleuthRunContext runContext = runContextFactory.create(project, session.getUserProperties());
         String instrumentationVersion = configuredVersion();
         MavenTestInstrumentation.Result result = new MavenTestInstrumentation().apply(
                 project,
                 session.getUserProperties(),
                 eventsFile,
-                instrumentationVersion
+                instrumentationVersion,
+                runContext
         );
+        runContextFactory.write(outputDirectory, runContext);
 
         if (result.dependencyAdded()) {
             getLog().info("Added testsleuth-junit5 to the test runtime classpath");
@@ -44,6 +50,8 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
             getLog().debug("testsleuth-junit5 is already present in project dependencies");
         }
         getLog().info("Configured JUnit lifecycle event output at " + result.eventsFile());
+        getLog().debug("Configured TestSleuth build run " + runContext.buildRunId()
+                + " for module " + runContext.moduleId());
     }
 
     private String configuredVersion() throws MojoExecutionException {
