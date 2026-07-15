@@ -70,8 +70,27 @@ public final class SlowTestDetector implements TestSleuthDetector {
         return List.of(
                 "Observed duration " + timedTest.duration().toMillis() + " ms.",
                 source,
-                "Joined collectors: " + String.join(", ", timedTest.collectors())
+                "Joined collectors: " + String.join(", ", timedTest.collectors()),
+                "Module: " + timedTest.moduleId() + ".",
+                "Build run: " + timedTest.buildRunId() + ".",
+                "Maven project: " + contextValue(timedTest.project()) + ".",
+                "Process IDs: " + contextValues(timedTest.processIds()) + ".",
+                "Fork numbers: " + contextValues(timedTest.forkNumbers()) + "."
         );
+    }
+
+    private static String contextValue(String value) {
+        if (value == null || value.isBlank()) {
+            return "unknown";
+        }
+        return value;
+    }
+
+    private static String contextValues(List<String> values) {
+        if (values.isEmpty()) {
+            return "unknown";
+        }
+        return String.join(", ", values);
     }
 
     private record TimedTest(
@@ -79,7 +98,12 @@ public final class SlowTestDetector implements TestSleuthDetector {
             String displayName,
             Duration duration,
             String reportFile,
-            List<String> collectors
+            List<String> collectors,
+            String buildRunId,
+            String moduleId,
+            String project,
+            List<String> processIds,
+            List<String> forkNumbers
     ) {
         private static Optional<TimedTest> from(TestObservation observation, Optional<String> preferredCollector) {
             return observation.selectedFinishedEvent(preferredCollector)
@@ -89,8 +113,33 @@ public final class SlowTestDetector implements TestSleuthDetector {
                                     event.attributes().getOrDefault("displayName", observation.testIdentity())),
                             TestObservation.duration(event),
                             event.attributes().getOrDefault("reportFile", ""),
-                            observation.collectors()
+                            observation.collectors(),
+                            observation.buildRunId(),
+                            observation.moduleId(),
+                            project(observation),
+                            knownValues(observation, "processId"),
+                            knownValues(observation, "forkNumber")
                     ));
+        }
+
+        private static String project(TestObservation observation) {
+            String groupId = observation.firstAttribute("projectGroupId").orElse("");
+            String artifactId = observation.firstAttribute("projectArtifactId").orElse("");
+            String version = observation.firstAttribute("projectVersion").orElse("");
+            if (groupId.isBlank() && artifactId.isBlank() && version.isBlank()) {
+                return "";
+            }
+            return String.join(":", List.of(
+                    groupId.isBlank() ? "unknown" : groupId,
+                    artifactId.isBlank() ? "unknown" : artifactId,
+                    version.isBlank() ? "unknown" : version
+            ));
+        }
+
+        private static List<String> knownValues(TestObservation observation, String attributeName) {
+            return observation.distinctAttributeValues(attributeName).stream()
+                    .filter(value -> !"unknown".equals(value))
+                    .toList();
         }
     }
 }

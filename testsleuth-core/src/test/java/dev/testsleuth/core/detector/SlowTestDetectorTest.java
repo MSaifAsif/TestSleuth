@@ -58,6 +58,11 @@ final class SlowTestDetectorTest {
         assertEquals(1, findings.size());
         assertEquals(1_250, findings.get(0).observedCost().toMillis());
         assertEquals("Joined collectors: junit5-listener, maven-test-report", findings.get(0).evidence().get(2));
+        assertEquals("Module: module-a.", findings.get(0).evidence().get(3));
+        assertEquals("Build run: run-1.", findings.get(0).evidence().get(4));
+        assertEquals("Maven project: dev.testsleuth:sample:0.1.0.", findings.get(0).evidence().get(5));
+        assertEquals("Process IDs: 12345.", findings.get(0).evidence().get(6));
+        assertEquals("Fork numbers: 1.", findings.get(0).evidence().get(7));
     }
 
     @Test
@@ -84,6 +89,11 @@ final class SlowTestDetectorTest {
         attributes.put("collector", collector);
         attributes.put("buildRunId", "run-1");
         attributes.put("moduleId", "module-a");
+        attributes.put("projectGroupId", "dev.testsleuth");
+        attributes.put("projectArtifactId", "sample");
+        attributes.put("projectVersion", "0.1.0");
+        attributes.put("processId", "12345");
+        attributes.put("forkNumber", "1");
         attributes.put("status", "passed");
         attributes.put("testName", testName);
         attributes.put("testIdentity", "ExampleTest." + testName);

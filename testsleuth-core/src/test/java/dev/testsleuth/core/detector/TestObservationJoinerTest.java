@@ -32,6 +32,8 @@ final class TestObservationJoinerTest {
         assertEquals("ExampleTest.slow", first.testIdentity());
         assertEquals(3, first.events().size());
         assertEquals(List.of("junit5-listener", "maven-test-report"), first.collectors());
+        assertEquals("junit5-listener", first.firstAttribute("collector").orElseThrow());
+        assertEquals(List.of("junit5-listener", "maven-test-report"), first.distinctAttributeValues("collector"));
     }
 
     private static TestSleuthEvent event(

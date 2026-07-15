@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Build-run, module, Maven project, process, and fork context attributes on generated events.
 - Core detector API with a reusable slow-test detector used by the Maven plugin.
 - Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
+- Slow-test findings now include joined module, build-run, Maven project, process, and fork context.
+- Finding-level console output now includes compact module, fork, and collector context.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.

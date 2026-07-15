@@ -31,7 +31,7 @@ mvn testsleuth:instrument test testsleuth:report
 
 Full whole-build timing and automatic lifecycle binding are still upcoming roadmap work.
 
-The report currently includes timing-based findings for the slowest tests observed in Maven test reports. These are investigation findings, not yet root-cause diagnoses.
+The report currently includes timing-based findings for the slowest tests observed in Maven test reports. Findings include joined JUnit/Maven collector evidence and run context such as module, build run, Maven project, process, and fork when available. These are investigation findings, not yet root-cause diagnoses.
 
 ## Sample Project
 
@@ -61,7 +61,7 @@ mvn testsleuth:instrument test testsleuth:report \
 Current options:
 
 - `testsleuth.console.enabled`: `true` by default.
-- `testsleuth.console.detail`: `quiet`, `summary`, or `findings`; default is `summary`.
+- `testsleuth.console.detail`: `quiet`, `summary`, or `findings`; default is `summary`. `findings` adds one compact log line per finding with module, fork, and collector context when available.
 - `testsleuth.threshold.slowTestMillis`: minimum duration for slow-test findings; default is `1000`.
 - `testsleuth.threshold.verySlowTestMillis`: threshold for high-severity slow-test findings; default is `5000`.
 - `testsleuth.findings.max`: maximum timing findings to show; default is `10`.

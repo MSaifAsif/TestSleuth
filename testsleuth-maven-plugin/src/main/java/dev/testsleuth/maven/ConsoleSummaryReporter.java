@@ -49,11 +49,47 @@ final class ConsoleSummaryReporter {
                     .sorted(Comparator.comparing(Finding::observedCost).reversed())
                     .forEach(finding -> log.info("[TestSleuth] - " + finding.severity()
                             + " " + finding.title()
-                            + " (" + finding.observedCost().toMillis() + " ms)"));
+                            + " (" + finding.observedCost().toMillis() + " ms"
+                            + contextSuffix(finding)
+                            + ")"));
         }
 
         log.info("[TestSleuth] Report: " + htmlReport);
         log.info("[TestSleuth] Events: " + eventsFile);
     }
-}
 
+    private static String contextSuffix(Finding finding) {
+        String module = evidenceValue(finding, "Module: ");
+        String fork = evidenceValue(finding, "Fork numbers: ");
+        String collectors = evidenceValue(finding, "Joined collectors: ");
+
+        StringBuilder suffix = new StringBuilder();
+        appendContext(suffix, "module", module);
+        appendContext(suffix, "fork", fork);
+        appendContext(suffix, "collectors", collectors);
+        return suffix.toString();
+    }
+
+    private static void appendContext(StringBuilder suffix, String label, String value) {
+        if (value.isBlank() || "unknown".equals(value)) {
+            return;
+        }
+        suffix.append(", ").append(label).append("=").append(value);
+    }
+
+    private static String evidenceValue(Finding finding, String prefix) {
+        return finding.evidence().stream()
+                .filter(item -> item.startsWith(prefix))
+                .map(item -> item.substring(prefix.length()))
+                .map(ConsoleSummaryReporter::stripTrailingPeriod)
+                .findFirst()
+                .orElse("");
+    }
+
+    private static String stripTrailingPeriod(String value) {
+        if (value.endsWith(".")) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+}

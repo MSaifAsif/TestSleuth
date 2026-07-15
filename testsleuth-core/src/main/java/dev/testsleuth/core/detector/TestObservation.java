@@ -40,6 +40,26 @@ public record TestObservation(
                 .toList();
     }
 
+    Optional<String> firstAttribute(String name) {
+        Objects.requireNonNull(name, "name");
+        return events.stream()
+                .map(event -> event.attributes().get(name))
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .findFirst();
+    }
+
+    List<String> distinctAttributeValues(String name) {
+        Objects.requireNonNull(name, "name");
+        return events.stream()
+                .map(event -> event.attributes().get(name))
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     private Optional<TestSleuthEvent> finishedEventFromCollector(String collector) {
         return events.stream()
                 .filter(TestObservation::isPassedFinishedEvent)

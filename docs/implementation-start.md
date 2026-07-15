@@ -25,12 +25,13 @@ The first implementation milestone is a buildable repository foundation that ref
 - Build-run, module, Maven project, process, and fork context attributes on generated events.
 - Core detector API with a reusable slow-test detector used by the Maven plugin.
 - Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
+- Slow-test finding evidence includes joined module, build-run, Maven project, process, and fork context.
+- Finding-level console output includes compact module, fork, and collector context for CI logs.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
 
 ## Next
 
 1. Capture richer worker/fork details where each test runner exposes them.
 2. Add more detectors behind explicit configuration flags.
-3. Expand reports to show joined event context for each finding.
-4. Add Spring/framework initialization sample coverage.
-5. Improve aggregate-report lifecycle ergonomics for default Maven usage.
+3. Add Spring/framework initialization sample coverage.
+4. Improve aggregate-report lifecycle ergonomics for default Maven usage.
