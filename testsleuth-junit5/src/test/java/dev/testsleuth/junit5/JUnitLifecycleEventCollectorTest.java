@@ -8,6 +8,7 @@ import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
+import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestIdentifier;
 
 import java.nio.file.Files;
@@ -33,6 +34,9 @@ final class JUnitLifecycleEventCollectorTest {
         assertEquals(2, events.size());
         assertEquals(EventKind.TEST_STARTED, events.get(0).kind());
         assertEquals(EventKind.TEST_FINISHED, events.get(1).kind());
+        assertEquals("dev.testsleuth.ExampleTest.passes", events.get(1).subject().identifier());
+        assertEquals("dev.testsleuth.ExampleTest.passes", events.get(1).attributes().get("testIdentity"));
+        assertEquals("passes", events.get(1).attributes().get("displayName"));
         assertEquals("passed", events.get(1).attributes().get("status"));
         assertTrue(Long.parseLong(events.get(1).attributes().get("durationMillis")) >= 0);
     }
@@ -55,12 +59,16 @@ final class JUnitLifecycleEventCollectorTest {
     }
 
     private static TestIdentifier testIdentifier(String uniqueId, String displayName) {
-        return TestIdentifier.from(new TestDescriptorStub(uniqueId, displayName));
+        return TestIdentifier.from(new TestDescriptorStub(
+                uniqueId,
+                displayName,
+                MethodSource.from("dev.testsleuth.ExampleTest", displayName)
+        ));
     }
 
     private static final class TestDescriptorStub extends AbstractTestDescriptor {
-        private TestDescriptorStub(String uniqueId, String displayName) {
-            super(UniqueId.forEngine("testsleuth").append("test", uniqueId), displayName);
+        private TestDescriptorStub(String uniqueId, String displayName, MethodSource methodSource) {
+            super(UniqueId.forEngine("testsleuth").append("test", uniqueId), displayName, methodSource);
         }
 
         @Override

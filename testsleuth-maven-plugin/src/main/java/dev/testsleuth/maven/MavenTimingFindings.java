@@ -69,7 +69,7 @@ final class MavenTimingFindings {
         private static TimedTest from(TestSleuthEvent event) {
             String durationMillis = event.attributes().getOrDefault("durationMillis", "0");
             return new TimedTest(
-                    event.subject().identifier(),
+                    event.attributes().getOrDefault("testIdentity", event.subject().identifier()),
                     event.attributes().getOrDefault("testName", event.subject().identifier()),
                     Duration.ofMillis(parseMillis(durationMillis)),
                     event.attributes().getOrDefault("reportFile", "unknown")

@@ -5,6 +5,7 @@ import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.Subject;
 import dev.testsleuth.core.event.SubjectType;
 import dev.testsleuth.core.event.TestSleuthEvent;
+import dev.testsleuth.core.event.TestSubjectIdentity;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -79,7 +80,8 @@ final class MavenTestReportScanner {
     private static TestSleuthEvent toEvent(Path reportFile, Element testCase) {
         String className = attribute(testCase, "classname", "unknown");
         String testName = attribute(testCase, "name", "unknown");
-        String subjectId = className + "." + testName;
+        String methodName = TestSubjectIdentity.normalizeMethodName(testName);
+        String subjectId = TestSubjectIdentity.testMethod(className, methodName);
         String status = status(testCase);
         String durationMillis = durationMillis(attribute(testCase, "time", "0"));
 
@@ -94,7 +96,9 @@ final class MavenTestReportScanner {
                         "collector", "maven-test-report",
                         "reportFile", reportFile.toString(),
                         "className", className,
+                        "methodName", methodName,
                         "testName", testName,
+                        "testIdentity", subjectId,
                         "status", status,
                         "durationMillis", durationMillis
                 )
@@ -148,4 +152,3 @@ final class MavenTestReportScanner {
         }
     }
 }
-

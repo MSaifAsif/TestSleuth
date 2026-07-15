@@ -19,12 +19,13 @@ The first implementation milestone is a buildable repository foundation that ref
 - Configurable slow-test thresholds, finding limits, detector flags, and console verbosity.
 - CI-oriented console summary from the Maven report goal.
 - Intentionally slow Maven/JUnit 5 sample project for validating default findings.
+- Canonical test identities shared by JUnit lifecycle events and Maven XML report events.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
 
 ## Next
 
 1. Extend the event schema with build-run, module, worker, fork, and process identifiers.
-2. Reconcile collector events with Maven XML report events.
-3. Add stable build-run, module, worker, fork, and process identifiers.
-4. Start detector APIs outside the Maven plugin module.
-5. Add more benchmark scenarios for setup, waits, and framework initialization.
+2. Add stable build-run, module, worker, fork, and process identifiers.
+3. Start detector APIs outside the Maven plugin module.
+4. Add more benchmark scenarios for setup, waits, and framework initialization.
+5. Add identity-aware event joins for detectors that need both lifecycle and Maven XML timing data.

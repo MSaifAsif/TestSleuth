@@ -6,7 +6,9 @@ import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.Subject;
 import dev.testsleuth.core.event.SubjectType;
 import dev.testsleuth.core.event.TestSleuthEvent;
+import dev.testsleuth.core.event.TestSubjectIdentity;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
@@ -98,17 +100,37 @@ public final class JUnitLifecycleEventCollector {
         eventAttributes.put("uniqueId", testIdentifier.getUniqueId());
         eventAttributes.put("displayName", testIdentifier.getDisplayName());
         testIdentifier.getSource().ifPresent(source -> eventAttributes.put("source", source.toString()));
+        methodSource(testIdentifier).ifPresent(methodSource -> {
+            eventAttributes.put("className", methodSource.getClassName());
+            eventAttributes.put("methodName", methodSource.getMethodName());
+            eventAttributes.put("testIdentity", TestSubjectIdentity.testMethod(
+                    methodSource.getClassName(),
+                    methodSource.getMethodName()
+            ));
+        });
         eventAttributes.putAll(attributes);
 
         return new TestSleuthEvent(
                 new EventId("junit5:" + kind.name() + ":" + safeId(testIdentifier.getUniqueId())),
                 Optional.empty(),
                 kind,
-                new Subject(subjectType(testIdentifier), testIdentifier.getDisplayName()),
+                new Subject(subjectType(testIdentifier), subjectIdentifier(testIdentifier)),
                 Instant.now(),
                 System.nanoTime(),
                 eventAttributes
         );
+    }
+
+    private static String subjectIdentifier(TestIdentifier testIdentifier) {
+        return methodSource(testIdentifier)
+                .map(source -> TestSubjectIdentity.testMethod(source.getClassName(), source.getMethodName()))
+                .orElseGet(testIdentifier::getDisplayName);
+    }
+
+    private static Optional<MethodSource> methodSource(TestIdentifier testIdentifier) {
+        return testIdentifier.getSource()
+                .filter(MethodSource.class::isInstance)
+                .map(MethodSource.class::cast);
     }
 
     private static SubjectType subjectType(TestIdentifier testIdentifier) {
@@ -133,4 +155,3 @@ public final class JUnitLifecycleEventCollector {
         return value.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 }
-

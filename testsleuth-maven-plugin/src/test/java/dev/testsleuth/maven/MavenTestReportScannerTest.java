@@ -35,10 +35,11 @@ final class MavenTestReportScannerTest {
         TestSleuthEvent passed = result.events().get(0);
         TestSleuthEvent failed = result.events().get(1);
         assertEquals("dev.testsleuth.ExampleTest.passes", passed.subject().identifier());
+        assertEquals("dev.testsleuth.ExampleTest.passes", passed.attributes().get("testIdentity"));
+        assertEquals("passes", passed.attributes().get("methodName"));
         assertEquals("passed", passed.attributes().get("status"));
         assertEquals("12", passed.attributes().get("durationMillis"));
         assertEquals("failed", failed.attributes().get("status"));
         assertEquals("1250", failed.attributes().get("durationMillis"));
     }
 }
-
