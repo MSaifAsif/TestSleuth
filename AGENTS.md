@@ -26,7 +26,10 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 - CI-oriented console summary with optional finding detail.
 - Slow-test detector using joined JUnit lifecycle and Maven XML events.
 - Opt-in fixed-wait source detector for direct `Thread.sleep(...)` calls.
+- Opt-in polling-wait source detector for direct `Thread.sleep(...)` calls inside nearby loops.
 - Maven XML report events include Surefire/Failsafe runner metadata and configured fork settings when available.
+- Maven reports include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
+- Slow JUnit 5 Maven sample includes Spring-style framework initialization scenarios without external Spring dependencies.
 - Slow JUnit 5 Maven sample bound into the normal Maven lifecycle.
 
 ## Important Commands
@@ -48,6 +51,7 @@ Run the sample with fixed-wait source detection and detailed logs:
 ```bash
 mvn -pl testsleuth-samples/slow-junit5-maven verify \
   -Dtestsleuth.detectors.fixedWaits=true \
+  -Dtestsleuth.detectors.pollingWaits=true \
   -Dtestsleuth.console.detail=findings
 ```
 
@@ -66,8 +70,8 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 - `testsleuth-report`: HTML report renderer.
 - `testsleuth-maven-plugin`: Maven instrumentation, report generation, aggregation, console output, and Maven-specific detectors.
 - `testsleuth-samples/slow-junit5-maven`: intentionally slow Maven/JUnit 5 sample.
-- `docs/implementation-start.md`: current implementation tracker.
-- `docs/architecture.md`: architectural overview.
+- `README.md`: current architecture, usage, and repository overview.
+- `CHANGELOG.md`: notable user-visible changes.
 - `docs/adr/`: architecture decision records.
 - `project-management/`: ignored planning material, including the phase roadmap.
 
@@ -79,15 +83,15 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 - Keep source scanning opt-in unless the cost is clearly low and documented.
 - Keep console output brief and useful for CI logs.
 - Update `CHANGELOG.md` for user-visible fixes, features, behavior changes, and notable docs changes.
-- Update `docs/implementation-start.md` when changing roadmap status or next steps.
+- Keep README aligned when architecture, usage, or repository layout changes.
 - Do not add GitHub Actions right now.
 - Do not remove user changes or rewrite unrelated files.
 
 ## Current Next Steps
 
-1. Add Spring/framework initialization sample coverage.
-2. Add richer source detectors for polling libraries and framework-specific waits.
-3. Improve wall-clock/build-phase timing coverage.
+1. Add richer source detectors for polling libraries and framework-specific waits.
+2. Improve wall-clock/build-phase timing coverage beyond the initial lifecycle window.
+3. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
 
 ## Verification Expectations
 

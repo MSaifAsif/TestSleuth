@@ -47,6 +47,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.threshold.fixedWaitMillis", defaultValue = "250")
     private long fixedWaitMillis;
 
+    @Parameter(property = "testsleuth.threshold.pollingWaitMillis", defaultValue = "100")
+    private long pollingWaitMillis;
+
     @Parameter(property = "testsleuth.findings.max", defaultValue = "10")
     private int maxFindings;
 
@@ -55,6 +58,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
 
     @Parameter(property = "testsleuth.detectors.fixedWaits", defaultValue = "false")
     private boolean fixedWaitsDetectorEnabled;
+
+    @Parameter(property = "testsleuth.detectors.pollingWaits", defaultValue = "false")
+    private boolean pollingWaitsDetectorEnabled;
 
     @Override
     public void execute() throws MojoExecutionException {
@@ -66,6 +72,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         Path junitEvents = output.resolve("junit-events.json");
         TestSleuthRunContext runContext = new MavenRunContextFactory()
                 .loadOrCreate(output, project, session.getUserProperties());
+        java.util.Optional<MavenBuildTiming.RunTiming> runTiming = new MavenBuildTiming().load(output);
 
         MavenTestReportScanner.ScanResult scanResult = scanTestReports(runContext);
         TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
@@ -79,6 +86,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 "TestSleuth Report",
                 "Observed " + scanResult.testCount() + " Maven test results and "
                         + junitLifecycleEvents.size() + " JUnit lifecycle events. "
+                        + lifecycleSummary(runTiming)
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
                 findings
         );
@@ -97,6 +105,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 config,
                 scanResult,
                 junitLifecycleEvents.size(),
+                runTiming.map(MavenBuildTiming.RunTiming::elapsedSinceStart),
                 findings,
                 report,
                 events,
@@ -114,7 +123,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                     maxFindings,
                     slowTestsDetectorEnabled,
                     fixedWaitsDetectorEnabled,
-                    fixedWaitMillis
+                    fixedWaitMillis,
+                    pollingWaitsDetectorEnabled,
+                    pollingWaitMillis
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);
@@ -139,6 +150,13 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     ) {
         List<Finding> findings = new java.util.ArrayList<>(new MavenTimingFindings(config).detect(events));
         findings.addAll(new MavenFixedWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
+        findings.addAll(new MavenPollingWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
         return findings;
+    }
+
+    private static String lifecycleSummary(java.util.Optional<MavenBuildTiming.RunTiming> runTiming) {
+        return runTiming
+                .map(timing -> "Observed Maven lifecycle window " + timing.elapsedSinceStart().toMillis() + " ms. ")
+                .orElse("");
     }
 }

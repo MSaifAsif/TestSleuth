@@ -19,6 +19,43 @@ The project is currently in the Maven measurement foundation phase. The immediat
 mvn verify
 ```
 
+## Architecture
+
+TestSleuth separates measurement from diagnosis.
+
+```text
+Collectors
+    -> Event stream
+    -> Timeline
+    -> Cost graph
+    -> Detector engine
+    -> Findings
+    -> Report
+    -> Verification
+```
+
+Collectors emit normalized facts. Detectors consume those facts later and produce evidence-backed findings. This keeps framework-specific instrumentation separate from the shared event model and makes detector behavior testable without rerunning a user's suite.
+
+Current modules:
+
+- `testsleuth-core`: framework-neutral event, finding, detector, and JSON model.
+- `testsleuth-junit5`: JUnit Platform lifecycle listener.
+- `testsleuth-report`: HTML report renderer.
+- `testsleuth-maven-plugin`: Maven instrumentation, report generation, aggregation, CI logs, and machine-readable output.
+- `testsleuth-samples/slow-junit5-maven`: intentionally slow Maven/JUnit 5 sample.
+
+Planned Maven-first expansion areas:
+
+- `testsleuth-spring`
+- `testsleuth-testcontainers`
+- `testsleuth-flyway`
+- `testsleuth-liquibase`
+- `testsleuth-awaitility`
+- `testsleuth-cli`
+- `testsleuth-benchmarks`
+
+Gradle plugin support remains a product roadmap item, but current implementation work is intentionally focused on the Maven Phase 2 path.
+
 ## Current Maven Report Output
 
 The current `testsleuth:report` goal is an early Maven measurement foundation. It scans Maven Surefire and Failsafe XML reports, merges JUnit lifecycle events when available, writes `target/testsleuth/events.json`, writes machine-readable `target/testsleuth/findings.json`, and writes a basic `target/testsleuth/index.html`.
@@ -41,7 +78,8 @@ The repository includes an intentionally slow Maven/JUnit 5 sample:
 mvn -pl testsleuth-samples/slow-junit5-maven verify
 ```
 
-The sample produces a default slow-test finding without lowering the `1000ms` threshold.
+The sample produces default slow-test findings without lowering the `1000ms` threshold,
+and includes fixed-wait, setup-heavy, and Spring-style framework initialization examples.
 
 ### Maven Report Configuration
 
@@ -52,8 +90,10 @@ mvn testsleuth:instrument test testsleuth:report \
   -Dtestsleuth.threshold.slowTestMillis=1000 \
   -Dtestsleuth.threshold.verySlowTestMillis=5000 \
   -Dtestsleuth.threshold.fixedWaitMillis=250 \
+  -Dtestsleuth.threshold.pollingWaitMillis=100 \
   -Dtestsleuth.findings.max=10 \
   -Dtestsleuth.detectors.fixedWaits=false \
+  -Dtestsleuth.detectors.pollingWaits=false \
   -Dtestsleuth.console.detail=summary
 ```
 
@@ -64,9 +104,11 @@ Current options:
 - `testsleuth.threshold.slowTestMillis`: minimum duration for slow-test findings; default is `1000`.
 - `testsleuth.threshold.verySlowTestMillis`: threshold for high-severity slow-test findings; default is `5000`.
 - `testsleuth.threshold.fixedWaitMillis`: minimum direct `Thread.sleep(...)` duration for fixed-wait source findings; default is `250`.
+- `testsleuth.threshold.pollingWaitMillis`: minimum direct `Thread.sleep(...)` duration inside a nearby loop for polling-wait source findings; default is `100`.
 - `testsleuth.findings.max`: maximum timing findings to show; default is `10`.
 - `testsleuth.detectors.slowTests`: enables the current slow-test detector; default is `true`.
 - `testsleuth.detectors.fixedWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls; default is `false`.
+- `testsleuth.detectors.pollingWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls inside nearby loops; default is `false`.
 
 ## Current JUnit 5 Listener
 
@@ -82,8 +124,10 @@ TestSleuth is licensed under the Apache License, Version 2.0. See [LICENSE.txt](
 
 ```text
 testsleuth-core
+testsleuth-junit5
 testsleuth-report
 testsleuth-maven-plugin
+testsleuth-samples/slow-junit5-maven
 docs
 ```
 

@@ -44,6 +44,9 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.threshold.fixedWaitMillis", defaultValue = "250")
     private long fixedWaitMillis;
 
+    @Parameter(property = "testsleuth.threshold.pollingWaitMillis", defaultValue = "100")
+    private long pollingWaitMillis;
+
     @Parameter(property = "testsleuth.findings.max", defaultValue = "10")
     private int maxFindings;
 
@@ -52,6 +55,9 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
 
     @Parameter(property = "testsleuth.detectors.fixedWaits", defaultValue = "false")
     private boolean fixedWaitsDetectorEnabled;
+
+    @Parameter(property = "testsleuth.detectors.pollingWaits", defaultValue = "false")
+    private boolean pollingWaitsDetectorEnabled;
 
     @Override
     public void execute() throws MojoExecutionException {
@@ -65,6 +71,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         List<TestSleuthEvent> scannedEvents = new ArrayList<>();
         List<TestSleuthEvent> fallbackEvents = new ArrayList<>();
         List<TestSleuthEvent> detectorEvents = new ArrayList<>();
+        List<java.time.Duration> moduleLifecycleWindows = new ArrayList<>();
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
 
@@ -82,6 +89,9 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     reactorProject,
                     session.getUserProperties()
             );
+            new MavenBuildTiming().load(moduleOutput)
+                    .map(MavenBuildTiming.RunTiming::elapsedSinceStart)
+                    .ifPresent(moduleLifecycleWindows::add);
             moduleScanResult = scanTestReports(reactorProject, runContext);
             scannedEvents.addAll(moduleScanResult.events());
             if (!Files.isRegularFile(moduleEvents)) {
@@ -100,6 +110,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                 "Aggregated " + session.getProjects().size() + " Maven projects, "
                         + scanResult.testCount() + " Maven test results, and "
                         + junitLifecycleEvents + " JUnit lifecycle events. "
+                        + aggregateLifecycleSummary(moduleLifecycleWindows)
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
                 findings
         );
@@ -118,6 +129,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                 config,
                 scanResult,
                 junitLifecycleEvents,
+                aggregateLifecycleWindow(moduleLifecycleWindows),
                 findings,
                 report,
                 events,
@@ -135,7 +147,9 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     maxFindings,
                     slowTestsDetectorEnabled,
                     fixedWaitsDetectorEnabled,
-                    fixedWaitMillis
+                    fixedWaitMillis,
+                    pollingWaitsDetectorEnabled,
+                    pollingWaitMillis
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);
@@ -163,6 +177,8 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
             );
             findings.addAll(new MavenFixedWaitFindings(config, runContext)
                     .detect(reactorProject.getTestCompileSourceRoots()));
+            findings.addAll(new MavenPollingWaitFindings(config, runContext)
+                    .detect(reactorProject.getTestCompileSourceRoots()));
         }
         return findings;
     }
@@ -178,5 +194,15 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     + reactorProject.getGroupId() + ":" + reactorProject.getArtifactId());
         }
         return Path.of(build.getDirectory());
+    }
+
+    private static String aggregateLifecycleSummary(List<java.time.Duration> windows) {
+        return aggregateLifecycleWindow(windows)
+                .map(duration -> "Longest observed Maven lifecycle window " + duration.toMillis() + " ms. ")
+                .orElse("");
+    }
+
+    private static java.util.Optional<java.time.Duration> aggregateLifecycleWindow(List<java.time.Duration> windows) {
+        return windows.stream().max(java.util.Comparator.naturalOrder());
     }
 }

@@ -27,12 +27,16 @@ final class ConsoleSummaryReporterTest {
                 config,
                 new MavenTestReportScanner.ScanResult(List.of()),
                 3,
+                java.util.Optional.of(Duration.ofMillis(2_500)),
                 List.of(finding()),
                 Path.of("target/testsleuth/index.html"),
                 Path.of("target/testsleuth/events.json"),
                 Path.of("target/testsleuth/findings.json")
         );
 
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "[TestSleuth] Maven lifecycle window: 2500 ms"
+        )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] - MEDIUM Slow observed test: slowExample "
                         + "(1500 ms, module=dev.testsleuth:sample, fork=1, runner=surefire, collectors=junit5-listener, maven-test-report)"

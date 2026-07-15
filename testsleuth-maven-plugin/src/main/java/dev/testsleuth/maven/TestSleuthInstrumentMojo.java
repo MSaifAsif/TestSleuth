@@ -43,6 +43,7 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
                 runContext
         );
         runContextFactory.write(outputDirectory, runContext);
+        new MavenBuildTiming().start(outputDirectory);
 
         if (result.dependencyAdded()) {
             getLog().info("Added testsleuth-junit5 to the test runtime classpath");

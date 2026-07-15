@@ -30,6 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Aggregate reports now include Maven-scanned fallback events for modules without module-level `events.json`.
 - Root `AGENTS.md` Codex context document for future agent sessions.
 - Maven XML report events now include Surefire/Failsafe runner metadata and configured fork settings when available.
+- Maven reports now include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
+- Slow Maven/JUnit 5 sample now includes Spring-style framework initialization scenarios without external Spring dependencies.
+- Opt-in polling-wait source detector for direct `Thread.sleep(...)` calls inside loops.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.
@@ -40,7 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- None yet.
+- Consolidated architecture documentation into the root `README.md` and removed the standalone implementation tracker.
 
 ### Fixed
 
