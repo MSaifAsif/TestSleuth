@@ -19,14 +19,18 @@ The first implementation milestone is a buildable repository foundation that ref
 - Configurable slow-test thresholds, finding limits, detector flags, and console verbosity.
 - CI-oriented console summary from the Maven report goal.
 - Intentionally slow Maven/JUnit 5 sample project for validating default findings.
+- Additional sample scenarios for fixed waits, polling-style delays, and setup-heavy tests.
+- Maven `testsleuth:aggregate-report` goal for root-level aggregation across reactor modules.
 - Canonical test identities shared by JUnit lifecycle events and Maven XML report events.
 - Build-run, module, Maven project, process, and fork context attributes on generated events.
+- Core detector API with a reusable slow-test detector used by the Maven plugin.
+- Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
 
 ## Next
 
-1. Start detector APIs outside the Maven plugin module.
-2. Add identity-aware event joins for detectors that need both lifecycle and Maven XML timing data.
-3. Add more benchmark scenarios for setup, waits, and framework initialization.
-4. Add multi-module sample coverage to validate build-run grouping.
-5. Capture richer worker/fork details where each test runner exposes them.
+1. Capture richer worker/fork details where each test runner exposes them.
+2. Add more detectors behind explicit configuration flags.
+3. Expand reports to show joined event context for each finding.
+4. Add Spring/framework initialization sample coverage.
+5. Improve aggregate-report lifecycle ergonomics for default Maven usage.

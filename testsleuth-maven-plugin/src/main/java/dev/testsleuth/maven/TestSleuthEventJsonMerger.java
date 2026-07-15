@@ -32,6 +32,41 @@ final class TestSleuthEventJsonMerger {
         return new EventJson(json, countEvents(existingJson));
     }
 
+    EventJson mergeEventFiles(List<Path> eventFiles) {
+        Objects.requireNonNull(eventFiles, "eventFiles");
+
+        List<String> arrays = new ArrayList<>();
+        int eventCount = 0;
+        for (Path eventFile : eventFiles) {
+            String json = readExistingEvents(eventFile);
+            String body = arrayBody(json);
+            if (!body.isBlank()) {
+                arrays.add(body);
+                eventCount += countEvents(json);
+            }
+        }
+
+        String json = arrays.isEmpty()
+                ? "[\n]\n"
+                : arrays.stream().collect(java.util.stream.Collectors.joining(",\n", "[\n", "\n]\n"));
+        return new EventJson(json, eventCount);
+    }
+
+    int countAttributeValue(String json, String attributeName, String value) {
+        Objects.requireNonNull(json, "json");
+        Objects.requireNonNull(attributeName, "attributeName");
+        Objects.requireNonNull(value, "value");
+
+        String pattern = "\"" + attributeName + "\":\"" + value + "\"";
+        int count = 0;
+        int index = 0;
+        while ((index = json.indexOf(pattern, index)) >= 0) {
+            count++;
+            index += pattern.length();
+        }
+        return count;
+    }
+
     private static String readExistingEvents(Path eventsFile) {
         if (!Files.isRegularFile(eventsFile)) {
             return "[\n]\n";
@@ -69,4 +104,3 @@ final class TestSleuthEventJsonMerger {
     record EventJson(String json, int preexistingEventCount) {
     }
 }
-

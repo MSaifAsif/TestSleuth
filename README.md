@@ -13,8 +13,6 @@ The project is currently in the repository-foundation phase. The immediate goal 
 - Maven plugin shell.
 - Architecture decision records under `docs/adr`.
 
-The product roadmap lives in [TestSleuth_Phase_Roadmap.md](TestSleuth_Phase_Roadmap.md).
-
 ## Build
 
 ```bash

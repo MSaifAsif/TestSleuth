@@ -15,8 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Configurable Maven report thresholds, finding limits, detector flags, and console detail.
 - Concise CI-oriented console summary from `testsleuth:report`.
 - Intentionally slow Maven/JUnit 5 sample project for validating default findings.
+- Additional sample scenarios for fixed waits, polling-style delays, and setup-heavy tests.
+- Maven `testsleuth:aggregate-report` goal for root-level aggregation across reactor modules.
 - Canonical test identities shared by JUnit lifecycle events and Maven XML report events.
 - Build-run, module, Maven project, process, and fork context attributes on generated events.
+- Core detector API with a reusable slow-test detector used by the Maven plugin.
+- Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.

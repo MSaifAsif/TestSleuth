@@ -57,5 +57,28 @@ final class TestSleuthEventJsonMergerTest {
         assertEquals(0, merged.preexistingEventCount());
         assertEquals("[\n]\n", merged.json());
     }
-}
 
+    @Test
+    void mergesMultipleEventFiles() throws Exception {
+        Path first = tempDir.resolve("first.json");
+        Path second = tempDir.resolve("second.json");
+        Files.writeString(first, """
+                [
+                  {"id":"first","attributes":{"collector":"junit5-listener"}}
+                ]
+                """);
+        Files.writeString(second, """
+                [
+                  {"id":"second","attributes":{"collector":"maven-test-report"}}
+                ]
+                """);
+
+        TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
+        TestSleuthEventJsonMerger.EventJson merged = merger.mergeEventFiles(List.of(first, second));
+
+        assertEquals(2, merged.preexistingEventCount());
+        assertTrue(merged.json().contains("\"id\":\"first\""));
+        assertTrue(merged.json().contains("\"id\":\"second\""));
+        assertEquals(1, merger.countAttributeValue(merged.json(), "collector", "junit5-listener"));
+    }
+}
