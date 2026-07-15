@@ -37,10 +37,18 @@ final class MavenTestReportScanner {
     }
 
     ScanResult scan(List<Path> reportDirectories) {
+        Objects.requireNonNull(reportDirectories, "reportDirectories");
+        return scanReportDirectories(reportDirectories.stream()
+                .map(path -> new ReportDirectory(path, Map.of()))
+                .toList());
+    }
+
+    ScanResult scanReportDirectories(List<ReportDirectory> reportDirectories) {
+        Objects.requireNonNull(reportDirectories, "reportDirectories");
         List<TestSleuthEvent> events = new ArrayList<>();
 
-        for (Path reportDirectory : reportDirectories) {
-            if (!Files.isDirectory(reportDirectory)) {
+        for (ReportDirectory reportDirectory : reportDirectories) {
+            if (!Files.isDirectory(reportDirectory.path())) {
                 continue;
             }
             scanDirectory(reportDirectory, events);
@@ -49,24 +57,24 @@ final class MavenTestReportScanner {
         return new ScanResult(List.copyOf(events));
     }
 
-    private void scanDirectory(Path reportDirectory, List<TestSleuthEvent> events) {
-        try (Stream<Path> paths = Files.list(reportDirectory)) {
+    private void scanDirectory(ReportDirectory reportDirectory, List<TestSleuthEvent> events) {
+        try (Stream<Path> paths = Files.list(reportDirectory.path())) {
             paths.filter(path -> path.getFileName().toString().startsWith("TEST-"))
                     .filter(path -> path.getFileName().toString().endsWith(".xml"))
                     .sorted(Comparator.naturalOrder())
-                    .forEach(path -> scanFile(path, events));
+                    .forEach(path -> scanFile(reportDirectory, path, events));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to scan Maven test report directory " + reportDirectory, e);
         }
     }
 
-    private void scanFile(Path reportFile, List<TestSleuthEvent> events) {
+    private void scanFile(ReportDirectory reportDirectory, Path reportFile, List<TestSleuthEvent> events) {
         Document document = readXml(reportFile);
         NodeList testCases = document.getElementsByTagName("testcase");
         for (int index = 0; index < testCases.getLength(); index++) {
             Node node = testCases.item(index);
             if (node instanceof Element testCase) {
-                events.add(toEvent(reportFile, testCase));
+                events.add(toEvent(reportDirectory, reportFile, testCase));
             }
         }
     }
@@ -85,11 +93,16 @@ final class MavenTestReportScanner {
         }
     }
 
-    private TestSleuthEvent toEvent(Path reportFile, Element testCase) {
-        return toEvent(reportFile, testCase, runContext);
+    private TestSleuthEvent toEvent(ReportDirectory reportDirectory, Path reportFile, Element testCase) {
+        return toEvent(reportDirectory, reportFile, testCase, runContext);
     }
 
-    private static TestSleuthEvent toEvent(Path reportFile, Element testCase, TestSleuthRunContext runContext) {
+    private static TestSleuthEvent toEvent(
+            ReportDirectory reportDirectory,
+            Path reportFile,
+            Element testCase,
+            TestSleuthRunContext runContext
+    ) {
         String className = attribute(testCase, "classname", "unknown");
         String testName = attribute(testCase, "name", "unknown");
         String methodName = TestSubjectIdentity.normalizeMethodName(testName);
@@ -104,11 +117,22 @@ final class MavenTestReportScanner {
                 new Subject(SubjectType.TEST_METHOD, subjectId),
                 Instant.EPOCH,
                 0,
-                attributes(reportFile, className, methodName, testName, subjectId, status, durationMillis, runContext)
+                attributes(
+                        reportDirectory,
+                        reportFile,
+                        className,
+                        methodName,
+                        testName,
+                        subjectId,
+                        status,
+                        durationMillis,
+                        runContext
+                )
         );
     }
 
     private static Map<String, String> attributes(
+            ReportDirectory reportDirectory,
             Path reportFile,
             String className,
             String methodName,
@@ -119,8 +143,10 @@ final class MavenTestReportScanner {
             TestSleuthRunContext runContext
     ) {
         java.util.HashMap<String, String> attributes = new java.util.HashMap<>(runContext.attributes());
+        attributes.putAll(reportDirectory.attributes());
         attributes.put("collector", "maven-test-report");
         attributes.put("reportFile", reportFile.toString());
+        attributes.put("reportDirectory", reportDirectory.path().toString());
         attributes.put("className", className);
         attributes.put("methodName", methodName);
         attributes.put("testName", testName);
@@ -174,6 +200,13 @@ final class MavenTestReportScanner {
 
         int testCount() {
             return events.size();
+        }
+    }
+
+    record ReportDirectory(Path path, Map<String, String> attributes) {
+        ReportDirectory {
+            Objects.requireNonNull(path, "path");
+            attributes = Map.copyOf(Objects.requireNonNull(attributes, "attributes"));
         }
     }
 }

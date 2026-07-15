@@ -23,6 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
 - Slow-test findings now include joined module, build-run, Maven project, process, and fork context.
 - Finding-level console output now includes compact module, fork, and collector context.
+- Opt-in fixed-wait source detector for direct `Thread.sleep(...)` calls in Maven test sources.
+- Maven report goals now write machine-readable `findings.json` output.
+- Slow Maven/JUnit 5 sample now binds TestSleuth into the normal Maven lifecycle.
+- Maven detectors now run against combined JUnit lifecycle and Maven XML events when both are available.
+- Aggregate reports now include Maven-scanned fallback events for modules without module-level `events.json`.
+- Root `AGENTS.md` Codex context document for future agent sessions.
+- Maven XML report events now include Surefire/Failsafe runner metadata and configured fork settings when available.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.

@@ -47,6 +47,7 @@ final class TestSleuthEventJsonMergerTest {
         assertEquals(1, merged.preexistingEventCount());
         assertTrue(merged.json().contains("\"id\":\"existing\""));
         assertTrue(merged.json().contains("\"id\":\"additional\""));
+        assertEquals(1, new TestSleuthEventJsonMerger().readEvents(existingEvents).size());
     }
 
     @Test
@@ -80,5 +81,30 @@ final class TestSleuthEventJsonMergerTest {
         assertTrue(merged.json().contains("\"id\":\"first\""));
         assertTrue(merged.json().contains("\"id\":\"second\""));
         assertEquals(1, merger.countAttributeValue(merged.json(), "collector", "junit5-listener"));
+    }
+
+    @Test
+    void mergesEventFilesWithAdditionalEvents() throws Exception {
+        Path first = tempDir.resolve("first.json");
+        Files.writeString(first, """
+                [
+                  {"id":"first","attributes":{"collector":"junit5-listener"}}
+                ]
+                """);
+        TestSleuthEvent additional = new TestSleuthEvent(
+                new EventId("additional"),
+                Optional.empty(),
+                EventKind.TEST_FINISHED,
+                new Subject(SubjectType.TEST_METHOD, "test"),
+                Instant.parse("2026-07-14T00:00:01Z"),
+                2,
+                Map.of("collector", "maven-test-report")
+        );
+
+        TestSleuthEventJsonMerger.EventJson merged = new TestSleuthEventJsonMerger()
+                .mergeEventFiles(List.of(first), List.of(additional));
+
+        assertTrue(merged.json().contains("\"id\":\"first\""));
+        assertTrue(merged.json().contains("\"id\":\"additional\""));
     }
 }

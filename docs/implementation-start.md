@@ -27,11 +27,17 @@ The first implementation milestone is a buildable repository foundation that ref
 - Identity-aware observation joining across JUnit lifecycle and Maven XML report events.
 - Slow-test finding evidence includes joined module, build-run, Maven project, process, and fork context.
 - Finding-level console output includes compact module, fork, and collector context for CI logs.
+- Opt-in fixed-wait source detector for direct `Thread.sleep(...)` calls in Maven test sources.
+- Machine-readable `findings.json` output from Maven report goals.
+- Slow Maven/JUnit 5 sample binds TestSleuth instrumentation and reporting into the normal Maven lifecycle.
+- Maven detectors consume combined JUnit lifecycle and Maven XML events when both are available.
+- Aggregate reports include Maven-scanned fallback events for modules without module-level `events.json`.
+- Root `AGENTS.md` Codex context document for future agent sessions.
+- Maven XML report events include Surefire/Failsafe runner metadata and configured fork settings when available.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
 
 ## Next
 
-1. Capture richer worker/fork details where each test runner exposes them.
-2. Add more detectors behind explicit configuration flags.
-3. Add Spring/framework initialization sample coverage.
-4. Improve aggregate-report lifecycle ergonomics for default Maven usage.
+1. Add Spring/framework initialization sample coverage.
+2. Add richer source detectors for polling libraries and framework-specific waits.
+3. Improve wall-clock/build-phase timing coverage.

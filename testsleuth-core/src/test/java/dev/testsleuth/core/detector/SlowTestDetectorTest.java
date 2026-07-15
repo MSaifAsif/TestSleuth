@@ -63,6 +63,8 @@ final class SlowTestDetectorTest {
         assertEquals("Maven project: dev.testsleuth:sample:0.1.0.", findings.get(0).evidence().get(5));
         assertEquals("Process IDs: 12345.", findings.get(0).evidence().get(6));
         assertEquals("Fork numbers: 1.", findings.get(0).evidence().get(7));
+        assertEquals("Test runners: surefire.", findings.get(0).evidence().get(8));
+        assertEquals("Configured fork counts: 2.", findings.get(0).evidence().get(9));
     }
 
     @Test
@@ -94,6 +96,8 @@ final class SlowTestDetectorTest {
         attributes.put("projectVersion", "0.1.0");
         attributes.put("processId", "12345");
         attributes.put("forkNumber", "1");
+        attributes.put("testRunner", "surefire");
+        attributes.put("testPlugin.forkCount", "2");
         attributes.put("status", "passed");
         attributes.put("testName", testName);
         attributes.put("testIdentity", "ExampleTest." + testName);

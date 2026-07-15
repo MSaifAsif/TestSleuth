@@ -46,6 +46,34 @@ final class MavenTestReportScannerTest {
         assertEquals("1250", failed.attributes().get("durationMillis"));
     }
 
+    @Test
+    void includesReportDirectoryRunnerAttributes() throws IOException {
+        Path reports = tempDir.resolve("failsafe-reports");
+        Files.createDirectories(reports);
+        Files.writeString(reports.resolve("TEST-dev.testsleuth.IntegrationTest.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <testsuite tests="1" failures="0" errors="0" skipped="0">
+                  <testcase classname="dev.testsleuth.IntegrationTest" name="passes" time="0.250"/>
+                </testsuite>
+                """);
+
+        MavenTestReportScanner.ScanResult result = new MavenTestReportScanner(runContext())
+                .scanReportDirectories(List.of(new MavenTestReportScanner.ReportDirectory(
+                        reports,
+                        java.util.Map.of(
+                                "testRunner", "failsafe",
+                                "testPlugin.forkCount", "2",
+                                "testPlugin.reuseForks", "false"
+                        )
+                )));
+
+        TestSleuthEvent event = result.events().get(0);
+        assertEquals("failsafe", event.attributes().get("testRunner"));
+        assertEquals("2", event.attributes().get("testPlugin.forkCount"));
+        assertEquals("false", event.attributes().get("testPlugin.reuseForks"));
+        assertEquals(reports.toString(), event.attributes().get("reportDirectory"));
+    }
+
     private static TestSleuthRunContext runContext() {
         return new TestSleuthRunContext(
                 "run-1",

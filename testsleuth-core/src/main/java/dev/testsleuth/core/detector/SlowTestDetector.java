@@ -75,7 +75,9 @@ public final class SlowTestDetector implements TestSleuthDetector {
                 "Build run: " + timedTest.buildRunId() + ".",
                 "Maven project: " + contextValue(timedTest.project()) + ".",
                 "Process IDs: " + contextValues(timedTest.processIds()) + ".",
-                "Fork numbers: " + contextValues(timedTest.forkNumbers()) + "."
+                "Fork numbers: " + contextValues(timedTest.forkNumbers()) + ".",
+                "Test runners: " + contextValues(timedTest.testRunners()) + ".",
+                "Configured fork counts: " + contextValues(timedTest.configuredForkCounts()) + "."
         );
     }
 
@@ -103,7 +105,9 @@ public final class SlowTestDetector implements TestSleuthDetector {
             String moduleId,
             String project,
             List<String> processIds,
-            List<String> forkNumbers
+            List<String> forkNumbers,
+            List<String> testRunners,
+            List<String> configuredForkCounts
     ) {
         private static Optional<TimedTest> from(TestObservation observation, Optional<String> preferredCollector) {
             return observation.selectedFinishedEvent(preferredCollector)
@@ -118,7 +122,9 @@ public final class SlowTestDetector implements TestSleuthDetector {
                             observation.moduleId(),
                             project(observation),
                             knownValues(observation, "processId"),
-                            knownValues(observation, "forkNumber")
+                            knownValues(observation, "forkNumber"),
+                            knownValues(observation, "testRunner"),
+                            knownValues(observation, "testPlugin.forkCount")
                     ));
         }
 

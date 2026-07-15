@@ -3,6 +3,7 @@ package dev.testsleuth.maven;
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.FindingJsonWriter;
 import dev.testsleuth.report.HtmlReportRenderer;
 import dev.testsleuth.report.HtmlReportRenderer.ReportModel;
 import org.apache.maven.execution.MavenSession;
@@ -43,11 +44,17 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.threshold.verySlowTestMillis", defaultValue = "5000")
     private long verySlowTestMillis;
 
+    @Parameter(property = "testsleuth.threshold.fixedWaitMillis", defaultValue = "250")
+    private long fixedWaitMillis;
+
     @Parameter(property = "testsleuth.findings.max", defaultValue = "10")
     private int maxFindings;
 
     @Parameter(property = "testsleuth.detectors.slowTests", defaultValue = "true")
     private boolean slowTestsDetectorEnabled;
+
+    @Parameter(property = "testsleuth.detectors.fixedWaits", defaultValue = "false")
+    private boolean fixedWaitsDetectorEnabled;
 
     @Override
     public void execute() throws MojoExecutionException {
@@ -55,19 +62,23 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         Path output = Path.of(outputDirectory);
         Path report = output.resolve("index.html");
         Path events = output.resolve("events.json");
+        Path findingsFile = output.resolve("findings.json");
         Path junitEvents = output.resolve("junit-events.json");
         TestSleuthRunContext runContext = new MavenRunContextFactory()
                 .loadOrCreate(output, project, session.getUserProperties());
 
         MavenTestReportScanner.ScanResult scanResult = scanTestReports(runContext);
-        TestSleuthEventJsonMerger.EventJson mergedEvents = new TestSleuthEventJsonMerger()
-                .merge(junitEvents, scanResult.events());
-        List<Finding> findings = new MavenTimingFindings(config).detect(scanResult.events());
+        TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
+        List<TestSleuthEvent> junitLifecycleEvents = merger.readEvents(junitEvents);
+        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.merge(junitEvents, scanResult.events());
+        List<TestSleuthEvent> detectorEvents = new java.util.ArrayList<>(junitLifecycleEvents);
+        detectorEvents.addAll(scanResult.events());
+        List<Finding> findings = detectFindings(config, detectorEvents, runContext);
 
         ReportModel model = new ReportModel(
                 "TestSleuth Report",
                 "Observed " + scanResult.testCount() + " Maven test results and "
-                        + mergedEvents.preexistingEventCount() + " JUnit lifecycle events. "
+                        + junitLifecycleEvents.size() + " JUnit lifecycle events. "
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
                 findings
         );
@@ -75,6 +86,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         try {
             Files.createDirectories(output);
             Files.writeString(events, mergedEvents.json(), StandardCharsets.UTF_8);
+            Files.writeString(findingsFile, new FindingJsonWriter().write(findings), StandardCharsets.UTF_8);
             Files.writeString(report, new HtmlReportRenderer().render(model), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to write TestSleuth report", e);
@@ -84,10 +96,11 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 getLog(),
                 config,
                 scanResult,
-                mergedEvents.preexistingEventCount(),
+                junitLifecycleEvents.size(),
                 findings,
                 report,
-                events
+                events,
+                findingsFile
         );
     }
 
@@ -99,7 +112,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                     slowTestMillis,
                     verySlowTestMillis,
                     maxFindings,
-                    slowTestsDetectorEnabled
+                    slowTestsDetectorEnabled,
+                    fixedWaitsDetectorEnabled,
+                    fixedWaitMillis
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);
@@ -113,9 +128,17 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         }
 
         Path buildDirectory = Path.of(build.getDirectory());
-        return new MavenTestReportScanner(runContext).scan(List.of(
-                buildDirectory.resolve("surefire-reports"),
-                buildDirectory.resolve("failsafe-reports")
-        ));
+        return new MavenTestReportScanner(runContext)
+                .scanReportDirectories(new MavenTestRunnerContext().reportDirectories(project, buildDirectory));
+    }
+
+    private List<Finding> detectFindings(
+            TestSleuthMavenConfig config,
+            List<TestSleuthEvent> events,
+            TestSleuthRunContext runContext
+    ) {
+        List<Finding> findings = new java.util.ArrayList<>(new MavenTimingFindings(config).detect(events));
+        findings.addAll(new MavenFixedWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
+        return findings;
     }
 }

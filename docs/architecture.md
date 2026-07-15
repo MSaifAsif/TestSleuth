@@ -20,7 +20,7 @@ Collectors emit normalized facts. Detectors consume those facts later and produc
 - `testsleuth-core`: immutable event and finding model.
 - `testsleuth-junit5`: JUnit Platform lifecycle listener.
 - `testsleuth-report`: report model and rendering entry points.
-- `testsleuth-maven-plugin`: Maven plugin shell and future Surefire/Failsafe integration point.
+- `testsleuth-maven-plugin`: Maven plugin goals for instrumentation, report generation, aggregation, CI logs, and machine-readable output.
 
 ## Pending Modules
 
@@ -29,7 +29,8 @@ Collectors emit normalized facts. Detectors consume those facts later and produc
 - `testsleuth-flyway`
 - `testsleuth-liquibase`
 - `testsleuth-awaitility`
-- `testsleuth-gradle-plugin`
 - `testsleuth-cli`
 - `testsleuth-benchmarks`
 - `testsleuth-samples`
+
+Gradle plugin support remains a product roadmap item, but current implementation work is intentionally focused on the Maven Phase 2 path.

@@ -16,7 +16,8 @@ final class ConsoleSummaryReporter {
             int junitLifecycleEventCount,
             List<Finding> findings,
             Path htmlReport,
-            Path eventsFile
+            Path eventsFile,
+            Path findingsFile
     ) {
         Objects.requireNonNull(log, "log");
         Objects.requireNonNull(config, "config");
@@ -24,10 +25,12 @@ final class ConsoleSummaryReporter {
         Objects.requireNonNull(findings, "findings");
         Objects.requireNonNull(htmlReport, "htmlReport");
         Objects.requireNonNull(eventsFile, "eventsFile");
+        Objects.requireNonNull(findingsFile, "findingsFile");
 
         if (!config.consoleEnabled() || config.consoleDetail() == TestSleuthMavenConfig.ConsoleDetail.QUIET) {
             log.info("[TestSleuth] Report: " + htmlReport);
             log.info("[TestSleuth] Events: " + eventsFile);
+            log.info("[TestSleuth] Findings: " + findingsFile);
             return;
         }
 
@@ -56,16 +59,19 @@ final class ConsoleSummaryReporter {
 
         log.info("[TestSleuth] Report: " + htmlReport);
         log.info("[TestSleuth] Events: " + eventsFile);
+        log.info("[TestSleuth] Findings: " + findingsFile);
     }
 
     private static String contextSuffix(Finding finding) {
         String module = evidenceValue(finding, "Module: ");
         String fork = evidenceValue(finding, "Fork numbers: ");
+        String testRunner = evidenceValue(finding, "Test runners: ");
         String collectors = evidenceValue(finding, "Joined collectors: ");
 
         StringBuilder suffix = new StringBuilder();
         appendContext(suffix, "module", module);
         appendContext(suffix, "fork", fork);
+        appendContext(suffix, "runner", testRunner);
         appendContext(suffix, "collectors", collectors);
         return suffix.toString();
     }

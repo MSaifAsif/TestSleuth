@@ -1,5 +1,6 @@
 package dev.testsleuth.maven;
 
+import dev.testsleuth.core.event.EventJsonReader;
 import dev.testsleuth.core.event.EventJsonWriter;
 import dev.testsleuth.core.event.TestSleuthEvent;
 
@@ -33,7 +34,12 @@ final class TestSleuthEventJsonMerger {
     }
 
     EventJson mergeEventFiles(List<Path> eventFiles) {
+        return mergeEventFiles(eventFiles, List.of());
+    }
+
+    EventJson mergeEventFiles(List<Path> eventFiles, List<TestSleuthEvent> additionalEvents) {
         Objects.requireNonNull(eventFiles, "eventFiles");
+        Objects.requireNonNull(additionalEvents, "additionalEvents");
 
         List<String> arrays = new ArrayList<>();
         int eventCount = 0;
@@ -45,11 +51,24 @@ final class TestSleuthEventJsonMerger {
                 eventCount += countEvents(json);
             }
         }
+        String additionalJson = new EventJsonWriter().write(additionalEvents);
+        String additionalBody = arrayBody(additionalJson);
+        if (!additionalBody.isBlank()) {
+            arrays.add(additionalBody);
+        }
 
         String json = arrays.isEmpty()
                 ? "[\n]\n"
                 : arrays.stream().collect(java.util.stream.Collectors.joining(",\n", "[\n", "\n]\n"));
         return new EventJson(json, eventCount);
+    }
+
+    List<TestSleuthEvent> readEvents(Path eventsFile) {
+        Objects.requireNonNull(eventsFile, "eventsFile");
+        if (!Files.isRegularFile(eventsFile)) {
+            return List.of();
+        }
+        return new EventJsonReader().read(readExistingEvents(eventsFile));
     }
 
     int countAttributeValue(String json, String attributeName, String value) {

@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 final class MavenTimingFindingsTest {
     @Test
     void createsFindingsForSlowestMavenReportEvents() {
-        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 100, 1_000, 10, true);
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 100, 1_000, 10, true, false, 250);
 
         List<Finding> findings = new MavenTimingFindings(config).detect(List.of(
                 event("fast", 10),
@@ -35,7 +35,7 @@ final class MavenTimingFindingsTest {
 
     @Test
     void defaultThresholdSuppressesSubSecondFindings() {
-        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 1_000, 5_000, 10, true);
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 1_000, 5_000, 10, true, false, 250);
 
         List<Finding> findings = new MavenTimingFindings(config).detect(List.of(
                 event("fast", 10),
@@ -47,7 +47,7 @@ final class MavenTimingFindingsTest {
 
     @Test
     void respectsMaxFindings() {
-        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 1, 5_000, 1, true);
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "summary", 1, 5_000, 1, true, false, 250);
 
         List<Finding> findings = new MavenTimingFindings(config).detect(List.of(
                 event("slowest", 300),

@@ -9,25 +9,33 @@ record TestSleuthMavenConfig(
         ConsoleDetail consoleDetail,
         Duration slowTestThreshold,
         Duration verySlowTestThreshold,
+        Duration fixedWaitThreshold,
         int maxFindings,
-        boolean slowTestsDetectorEnabled
+        boolean slowTestsDetectorEnabled,
+        boolean fixedWaitsDetectorEnabled
 ) {
     static final boolean DEFAULT_CONSOLE_ENABLED = true;
     static final ConsoleDetail DEFAULT_CONSOLE_DETAIL = ConsoleDetail.SUMMARY;
     static final long DEFAULT_SLOW_TEST_MILLIS = 1_000;
     static final long DEFAULT_VERY_SLOW_TEST_MILLIS = 5_000;
+    static final long DEFAULT_FIXED_WAIT_MILLIS = 250;
     static final int DEFAULT_MAX_FINDINGS = 10;
     static final boolean DEFAULT_SLOW_TESTS_DETECTOR_ENABLED = true;
+    static final boolean DEFAULT_FIXED_WAITS_DETECTOR_ENABLED = false;
 
     TestSleuthMavenConfig {
         Objects.requireNonNull(consoleDetail, "consoleDetail");
         Objects.requireNonNull(slowTestThreshold, "slowTestThreshold");
         Objects.requireNonNull(verySlowTestThreshold, "verySlowTestThreshold");
+        Objects.requireNonNull(fixedWaitThreshold, "fixedWaitThreshold");
         if (slowTestThreshold.isNegative()) {
             throw new IllegalArgumentException("slow test threshold must not be negative");
         }
         if (verySlowTestThreshold.compareTo(slowTestThreshold) < 0) {
             throw new IllegalArgumentException("very slow test threshold must be greater than or equal to slow test threshold");
+        }
+        if (fixedWaitThreshold.isNegative()) {
+            throw new IllegalArgumentException("fixed wait threshold must not be negative");
         }
         if (maxFindings < 0) {
             throw new IllegalArgumentException("max findings must not be negative");
@@ -40,15 +48,19 @@ record TestSleuthMavenConfig(
             long slowTestMillis,
             long verySlowTestMillis,
             int maxFindings,
-            boolean slowTestsDetectorEnabled
+            boolean slowTestsDetectorEnabled,
+            boolean fixedWaitsDetectorEnabled,
+            long fixedWaitMillis
     ) {
         return new TestSleuthMavenConfig(
                 consoleEnabled,
                 ConsoleDetail.parse(consoleDetail),
                 Duration.ofMillis(slowTestMillis),
                 Duration.ofMillis(verySlowTestMillis),
+                Duration.ofMillis(fixedWaitMillis),
                 maxFindings,
-                slowTestsDetectorEnabled
+                slowTestsDetectorEnabled,
+                fixedWaitsDetectorEnabled
         );
     }
 
@@ -65,4 +77,3 @@ record TestSleuthMavenConfig(
         }
     }
 }
-

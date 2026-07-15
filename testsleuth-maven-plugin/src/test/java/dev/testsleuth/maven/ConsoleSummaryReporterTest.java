@@ -20,7 +20,7 @@ final class ConsoleSummaryReporterTest {
     @Test
     void findingDetailIncludesCompactContext() {
         RecordingLog log = new RecordingLog();
-        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "findings", 1_000, 5_000, 10, true);
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(true, "findings", 1_000, 5_000, 10, true, false, 250);
 
         new ConsoleSummaryReporter().report(
                 log,
@@ -29,12 +29,13 @@ final class ConsoleSummaryReporterTest {
                 3,
                 List.of(finding()),
                 Path.of("target/testsleuth/index.html"),
-                Path.of("target/testsleuth/events.json")
+                Path.of("target/testsleuth/events.json"),
+                Path.of("target/testsleuth/findings.json")
         );
 
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] - MEDIUM Slow observed test: slowExample "
-                        + "(1500 ms, module=dev.testsleuth:sample, fork=1, collectors=junit5-listener, maven-test-report)"
+                        + "(1500 ms, module=dev.testsleuth:sample, fork=1, runner=surefire, collectors=junit5-listener, maven-test-report)"
         )));
     }
 
@@ -56,7 +57,9 @@ final class ConsoleSummaryReporterTest {
                         "Build run: run-1.",
                         "Maven project: dev.testsleuth:sample:0.1.0.",
                         "Process IDs: 12345.",
-                        "Fork numbers: 1."
+                        "Fork numbers: 1.",
+                        "Test runners: surefire.",
+                        "Configured fork counts: 2."
                 ),
                 "This is one of the highest-duration tests observed in event data.",
                 "Inspect this test's setup, framework initialization, fixtures, waits, and external resources.",
