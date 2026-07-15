@@ -30,15 +30,17 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
             throw new MojoExecutionException("Unable to locate Maven build directory");
         }
 
-        Path eventsFile = Path.of(build.getDirectory()).resolve("testsleuth").resolve("junit-events.json");
-        Path outputDirectory = eventsFile.getParent();
+        Path outputDirectory = Path.of(build.getDirectory()).resolve("testsleuth");
+        Path junit5EventsFile = outputDirectory.resolve("junit-events.json");
+        Path junit4EventsFile = outputDirectory.resolve("junit4-events.json");
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthRunContext runContext = runContextFactory.create(project, session.getUserProperties());
         String instrumentationVersion = configuredVersion();
         MavenTestInstrumentation.Result result = new MavenTestInstrumentation().apply(
                 project,
                 session.getUserProperties(),
-                eventsFile,
+                junit5EventsFile,
+                junit4EventsFile,
                 instrumentationVersion,
                 runContext
         );
@@ -50,7 +52,8 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         } else {
             getLog().debug("testsleuth-junit5 is already present in project dependencies");
         }
-        getLog().info("Configured JUnit lifecycle event output at " + result.eventsFile());
+        getLog().info("Configured JUnit 5 lifecycle event output at " + result.junit5EventsFile());
+        getLog().info("Configured JUnit 4 lifecycle event output at " + result.junit4EventsFile());
         getLog().debug("Configured TestSleuth build run " + runContext.buildRunId()
                 + " for module " + runContext.moduleId());
     }

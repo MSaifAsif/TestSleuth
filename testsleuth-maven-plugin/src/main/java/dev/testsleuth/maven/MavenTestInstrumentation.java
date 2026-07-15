@@ -2,6 +2,7 @@ package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.EventJsonWriter;
 import dev.testsleuth.core.event.TestSleuthRunContext;
+import dev.testsleuth.junit4.TestSleuthJUnit4RunListener;
 import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
 import org.apache.maven.model.Build;
@@ -22,6 +23,9 @@ import java.util.stream.Collectors;
 final class MavenTestInstrumentation {
     static final String JUNIT_LISTENER_AUTODETECTION_PROPERTY = "junit.platform.listeners.autodetection.enabled";
     static final String JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY = TestSleuthJUnit5Extension.AUTODETECTION_PROPERTY;
+    static final String JUNIT4_SUREFIRE_LISTENER_PROPERTY = "listener";
+    static final String TESTSLEUTH_JUNIT4_GROUP_ID = "dev.testsleuth";
+    static final String TESTSLEUTH_JUNIT4_ARTIFACT_ID = "testsleuth-junit4";
     static final String TESTSLEUTH_JUNIT5_GROUP_ID = "dev.testsleuth";
     static final String TESTSLEUTH_JUNIT5_ARTIFACT_ID = "testsleuth-junit5";
     static final String MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY = "maven.test.additionalClasspath";
@@ -33,32 +37,36 @@ final class MavenTestInstrumentation {
     Result apply(
             MavenProject project,
             Properties userProperties,
-            Path eventsFile,
+            Path junit5EventsFile,
+            Path junit4EventsFile,
             String testSleuthVersion,
             TestSleuthRunContext runContext
     ) {
         Objects.requireNonNull(project, "project");
         Objects.requireNonNull(userProperties, "userProperties");
-        Objects.requireNonNull(eventsFile, "eventsFile");
+        Objects.requireNonNull(junit5EventsFile, "junit5EventsFile");
+        Objects.requireNonNull(junit4EventsFile, "junit4EventsFile");
         Objects.requireNonNull(runContext, "runContext");
         requireText(testSleuthVersion, "testSleuthVersion");
 
-        boolean dependencyAdded = ensureJUnit5Dependency(project, testSleuthVersion);
+        boolean dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
+        dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_JUNIT4_ARTIFACT_ID, testSleuthVersion) || dependencyAdded;
         userProperties.setProperty(JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
         userProperties.setProperty(JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
-        userProperties.setProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
+        userProperties.setProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, junit5EventsFile.toString());
+        userProperties.setProperty(TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY, junit4EventsFile.toString());
         setUserProperties(userProperties, runContext);
         appendAdditionalClasspath(userProperties);
-        configureTestPlugin(project, SUREFIRE_ARTIFACT_ID, eventsFile, testSleuthVersion, runContext);
-        configureTestPlugin(project, FAILSAFE_ARTIFACT_ID, eventsFile, testSleuthVersion, runContext);
+        configureTestPlugin(project, SUREFIRE_ARTIFACT_ID, junit5EventsFile, junit4EventsFile, testSleuthVersion, runContext);
+        configureTestPlugin(project, FAILSAFE_ARTIFACT_ID, junit5EventsFile, junit4EventsFile, testSleuthVersion, runContext);
 
-        return new Result(dependencyAdded, eventsFile);
+        return new Result(dependencyAdded, junit5EventsFile, junit4EventsFile);
     }
 
-    private static boolean ensureJUnit5Dependency(MavenProject project, String testSleuthVersion) {
+    private static boolean ensureTestSleuthDependency(MavenProject project, String artifactId, String testSleuthVersion) {
         boolean alreadyPresent = project.getDependencies().stream()
                 .anyMatch(dependency -> TESTSLEUTH_JUNIT5_GROUP_ID.equals(dependency.getGroupId())
-                        && TESTSLEUTH_JUNIT5_ARTIFACT_ID.equals(dependency.getArtifactId()));
+                        && artifactId.equals(dependency.getArtifactId()));
 
         if (alreadyPresent) {
             return false;
@@ -66,7 +74,7 @@ final class MavenTestInstrumentation {
 
         Dependency dependency = new Dependency();
         dependency.setGroupId(TESTSLEUTH_JUNIT5_GROUP_ID);
-        dependency.setArtifactId(TESTSLEUTH_JUNIT5_ARTIFACT_ID);
+        dependency.setArtifactId(artifactId);
         dependency.setVersion(testSleuthVersion);
         dependency.setScope("test");
         project.getDependencies().add(dependency);
@@ -76,7 +84,8 @@ final class MavenTestInstrumentation {
     private static void configureTestPlugin(
             MavenProject project,
             String artifactId,
-            Path eventsFile,
+            Path junit5EventsFile,
+            Path junit4EventsFile,
             String testSleuthVersion,
             TestSleuthRunContext runContext
     ) {
@@ -85,17 +94,14 @@ final class MavenTestInstrumentation {
         Xpp3Dom systemProperties = child(configuration, "systemPropertyVariables");
         setChildValue(systemProperties, JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
         setChildValue(systemProperties, JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
-        setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
+        setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, junit5EventsFile.toString());
+        setChildValue(systemProperties, TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY, junit4EventsFile.toString());
         setContextSystemProperties(systemProperties, runContext);
+        setSurefireProperty(configuration, JUNIT4_SUREFIRE_LISTENER_PROPERTY, TestSleuthJUnit4RunListener.class.getName());
 
         Xpp3Dom dependencies = child(configuration, "additionalClasspathDependencies");
-        if (!hasTestSleuthDependency(dependencies)) {
-            Xpp3Dom dependency = new Xpp3Dom("additionalClasspathDependency");
-            setChildValue(dependency, "groupId", TESTSLEUTH_JUNIT5_GROUP_ID);
-            setChildValue(dependency, "artifactId", TESTSLEUTH_JUNIT5_ARTIFACT_ID);
-            setChildValue(dependency, "version", testSleuthVersion);
-            dependencies.addChild(dependency);
-        }
+        addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
+        addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT4_ARTIFACT_ID, testSleuthVersion);
     }
 
     private static Plugin findOrCreateBuildPlugin(MavenProject project, String artifactId) {
@@ -144,17 +150,51 @@ final class MavenTestInstrumentation {
     }
 
     private static boolean hasTestSleuthDependency(Xpp3Dom dependencies) {
+        return hasTestSleuthDependency(dependencies, TESTSLEUTH_JUNIT5_ARTIFACT_ID);
+    }
+
+    private static boolean hasTestSleuthDependency(Xpp3Dom dependencies, String artifactIdValue) {
         for (Xpp3Dom child : dependencies.getChildren()) {
             Xpp3Dom groupId = child.getChild("groupId");
             Xpp3Dom artifactId = child.getChild("artifactId");
             if (groupId != null
                     && artifactId != null
                     && TESTSLEUTH_JUNIT5_GROUP_ID.equals(groupId.getValue())
-                    && TESTSLEUTH_JUNIT5_ARTIFACT_ID.equals(artifactId.getValue())) {
+                    && artifactIdValue.equals(artifactId.getValue())) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static void addAdditionalClasspathDependency(
+            Xpp3Dom dependencies,
+            String artifactId,
+            String testSleuthVersion
+    ) {
+        if (hasTestSleuthDependency(dependencies, artifactId)) {
+            return;
+        }
+        Xpp3Dom dependency = new Xpp3Dom("additionalClasspathDependency");
+        setChildValue(dependency, "groupId", TESTSLEUTH_JUNIT5_GROUP_ID);
+        setChildValue(dependency, "artifactId", artifactId);
+        setChildValue(dependency, "version", testSleuthVersion);
+        dependencies.addChild(dependency);
+    }
+
+    private static void setSurefireProperty(Xpp3Dom configuration, String name, String value) {
+        Xpp3Dom properties = child(configuration, "properties");
+        for (Xpp3Dom property : properties.getChildren("property")) {
+            Xpp3Dom propertyName = property.getChild("name");
+            if (propertyName != null && name.equals(propertyName.getValue())) {
+                setChildValue(property, "value", value);
+                return;
+            }
+        }
+        Xpp3Dom property = new Xpp3Dom("property");
+        setChildValue(property, "name", name);
+        setChildValue(property, "value", value);
+        properties.addChild(property);
     }
 
     private static void setUserProperties(Properties userProperties, TestSleuthRunContext runContext) {
@@ -188,6 +228,7 @@ final class MavenTestInstrumentation {
         }
 
         elements.add(codeSourcePath(TestSleuthJUnit5Listener.class));
+        elements.add(codeSourcePath(TestSleuthJUnit4RunListener.class));
         elements.add(codeSourcePath(EventJsonWriter.class));
         userProperties.setProperty(
                 MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY,
@@ -214,6 +255,6 @@ final class MavenTestInstrumentation {
         }
     }
 
-    record Result(boolean dependencyAdded, Path eventsFile) {
+    record Result(boolean dependencyAdded, Path junit5EventsFile, Path junit4EventsFile) {
     }
 }

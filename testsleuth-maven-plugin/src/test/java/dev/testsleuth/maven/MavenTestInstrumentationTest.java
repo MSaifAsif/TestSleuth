@@ -1,6 +1,7 @@
 package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.TestSleuthRunContext;
+import dev.testsleuth.junit4.TestSleuthJUnit4RunListener;
 import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
 import org.apache.maven.model.Build;
@@ -23,28 +24,29 @@ final class MavenTestInstrumentationTest {
     void addsJUnitListenerDependencyAndProperties() {
         MavenProject project = new MavenProject(new Model());
         Properties userProperties = new Properties();
-        Path eventsFile = Path.of("target/testsleuth/junit-events.json");
+        Path junit5EventsFile = Path.of("target/testsleuth/junit-events.json");
+        Path junit4EventsFile = Path.of("target/testsleuth/junit4-events.json");
         TestSleuthRunContext runContext = runContext();
 
         MavenTestInstrumentation.Result result = new MavenTestInstrumentation()
-                .apply(project, userProperties, eventsFile, "0.1.0-SNAPSHOT", runContext);
+                .apply(project, userProperties, junit5EventsFile, junit4EventsFile, "0.1.0-SNAPSHOT", runContext);
 
         assertTrue(result.dependencyAdded());
-        assertEquals(eventsFile, result.eventsFile());
+        assertEquals(junit5EventsFile, result.junit5EventsFile());
+        assertEquals(junit4EventsFile, result.junit4EventsFile());
         assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_LISTENER_AUTODETECTION_PROPERTY));
         assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY));
-        assertEquals(eventsFile.toString(), userProperties.getProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY));
+        assertEquals(junit5EventsFile.toString(), userProperties.getProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY));
+        assertEquals(junit4EventsFile.toString(), userProperties.getProperty(TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY));
         assertEquals("run-1", userProperties.getProperty(TestSleuthRunContext.BUILD_RUN_ID_PROPERTY));
         assertEquals("dev.testsleuth:sample", userProperties.getProperty(TestSleuthRunContext.MODULE_ID_PROPERTY));
         String additionalClasspath = userProperties.getProperty(MavenTestInstrumentation.MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY);
         assertTrue(additionalClasspath.contains("testsleuth-junit5"));
+        assertTrue(additionalClasspath.contains("testsleuth-junit4"));
         assertTrue(additionalClasspath.contains("testsleuth-core"));
-        assertEquals(1, project.getDependencies().size());
-        Dependency dependency = project.getDependencies().get(0);
-        assertEquals("dev.testsleuth", dependency.getGroupId());
-        assertEquals("testsleuth-junit5", dependency.getArtifactId());
-        assertEquals("0.1.0-SNAPSHOT", dependency.getVersion());
-        assertEquals("test", dependency.getScope());
+        assertEquals(2, project.getDependencies().size());
+        assertInjectedDependency(project, "testsleuth-junit5");
+        assertInjectedDependency(project, "testsleuth-junit4");
 
         Plugin surefire = project.getBuild().getPluginsAsMap().get("org.apache.maven.plugins:maven-surefire-plugin");
         Xpp3Dom configuration = (Xpp3Dom) surefire.getConfiguration();
@@ -54,8 +56,11 @@ final class MavenTestInstrumentationTest {
         assertEquals("true", configuration.getChild("systemPropertyVariables")
                 .getChild(TestSleuthJUnit5Extension.AUTODETECTION_PROPERTY)
                 .getValue());
-        assertEquals(eventsFile.toString(), configuration.getChild("systemPropertyVariables")
+        assertEquals(junit5EventsFile.toString(), configuration.getChild("systemPropertyVariables")
                 .getChild(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY)
+                .getValue());
+        assertEquals(junit4EventsFile.toString(), configuration.getChild("systemPropertyVariables")
+                .getChild(TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY)
                 .getValue());
         assertEquals("run-1", configuration.getChild("systemPropertyVariables")
                 .getChild(TestSleuthRunContext.BUILD_RUN_ID_PROPERTY)
@@ -63,9 +68,11 @@ final class MavenTestInstrumentationTest {
         assertEquals("${surefire.forkNumber}", configuration.getChild("systemPropertyVariables")
                 .getChild(TestSleuthRunContext.FORK_NUMBER_PROPERTY)
                 .getValue());
-        assertEquals("testsleuth-junit5", configuration.getChild("additionalClasspathDependencies")
-                .getChild("additionalClasspathDependency")
-                .getChild("artifactId")
+        assertAdditionalClasspathDependency(configuration, "testsleuth-junit5");
+        assertAdditionalClasspathDependency(configuration, "testsleuth-junit4");
+        assertEquals(TestSleuthJUnit4RunListener.class.getName(), configuration.getChild("properties")
+                .getChild("property")
+                .getChild("value")
                 .getValue());
     }
 
@@ -80,10 +87,17 @@ final class MavenTestInstrumentationTest {
         project.getDependencies().add(existing);
 
         MavenTestInstrumentation.Result result = new MavenTestInstrumentation()
-                .apply(project, new Properties(), Path.of("target/testsleuth/junit-events.json"), "0.1.0-SNAPSHOT", runContext());
+                .apply(
+                        project,
+                        new Properties(),
+                        Path.of("target/testsleuth/junit-events.json"),
+                        Path.of("target/testsleuth/junit4-events.json"),
+                        "0.1.0-SNAPSHOT",
+                        runContext()
+                );
 
-        assertFalse(result.dependencyAdded());
-        assertEquals(1, project.getDependencies().size());
+        assertTrue(result.dependencyAdded());
+        assertEquals(2, project.getDependencies().size());
     }
 
     @Test
@@ -98,9 +112,37 @@ final class MavenTestInstrumentationTest {
         project.setBuild(build);
 
         new MavenTestInstrumentation()
-                .apply(project, new Properties(), Path.of("target/testsleuth/junit-events.json"), "0.1.0-SNAPSHOT", runContext());
+                .apply(
+                        project,
+                        new Properties(),
+                        Path.of("target/testsleuth/junit-events.json"),
+                        Path.of("target/testsleuth/junit4-events.json"),
+                        "0.1.0-SNAPSHOT",
+                        runContext()
+                );
 
         assertEquals("3.3.1", surefire.getVersion());
+    }
+
+    private static void assertInjectedDependency(MavenProject project, String artifactId) {
+        Dependency dependency = project.getDependencies().stream()
+                .filter(candidate -> artifactId.equals(candidate.getArtifactId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("dev.testsleuth", dependency.getGroupId());
+        assertEquals("0.1.0-SNAPSHOT", dependency.getVersion());
+        assertEquals("test", dependency.getScope());
+    }
+
+    private static void assertAdditionalClasspathDependency(Xpp3Dom configuration, String artifactId) {
+        Xpp3Dom dependencies = configuration.getChild("additionalClasspathDependencies");
+        for (Xpp3Dom dependency : dependencies.getChildren("additionalClasspathDependency")) {
+            Xpp3Dom artifactIdNode = dependency.getChild("artifactId");
+            if (artifactIdNode != null && artifactId.equals(artifactIdNode.getValue())) {
+                return;
+            }
+        }
+        throw new AssertionError("Missing additionalClasspathDependency " + artifactId);
     }
 
     private static TestSleuthRunContext runContext() {

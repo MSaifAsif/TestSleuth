@@ -73,15 +73,19 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         Path report = output.resolve("index.html");
         Path events = output.resolve("events.json");
         Path findingsFile = output.resolve("findings.json");
-        Path junitEvents = output.resolve("junit-events.json");
+        Path junit5Events = output.resolve("junit-events.json");
+        Path junit4Events = output.resolve("junit4-events.json");
         TestSleuthRunContext runContext = new MavenRunContextFactory()
                 .loadOrCreate(output, project, session.getUserProperties());
         java.util.Optional<MavenBuildTiming.RunTiming> runTiming = new MavenBuildTiming().load(output);
 
         MavenTestReportScanner.ScanResult scanResult = scanTestReports(runContext);
         TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
-        List<TestSleuthEvent> junitLifecycleEvents = merger.readEvents(junitEvents);
-        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.merge(junitEvents, scanResult.events());
+        List<Path> junitEventFiles = List.of(junit5Events, junit4Events);
+        List<TestSleuthEvent> junitLifecycleEvents = junitEventFiles.stream()
+                .flatMap(file -> merger.readEvents(file).stream())
+                .toList();
+        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(junitEventFiles, scanResult.events());
         List<TestSleuthEvent> detectorEvents = new java.util.ArrayList<>(junitLifecycleEvents);
         detectorEvents.addAll(scanResult.events());
         MavenTimingSummary timingSummary = MavenTimingSummary.from(

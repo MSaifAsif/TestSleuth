@@ -82,10 +82,21 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         for (MavenProject reactorProject : session.getProjects()) {
             Path moduleOutput = moduleOutputDirectory(reactorProject);
             Path moduleEvents = moduleOutput.resolve("events.json");
+            Path moduleJunit5Events = moduleOutput.resolve("junit-events.json");
+            Path moduleJunit4Events = moduleOutput.resolve("junit4-events.json");
             MavenTestReportScanner.ScanResult moduleScanResult;
             if (Files.isRegularFile(moduleEvents)) {
                 moduleEventFiles.add(moduleEvents);
                 detectorEvents.addAll(merger.readEvents(moduleEvents));
+            } else {
+                if (Files.isRegularFile(moduleJunit5Events)) {
+                    moduleEventFiles.add(moduleJunit5Events);
+                    detectorEvents.addAll(merger.readEvents(moduleJunit5Events));
+                }
+                if (Files.isRegularFile(moduleJunit4Events)) {
+                    moduleEventFiles.add(moduleJunit4Events);
+                    detectorEvents.addAll(merger.readEvents(moduleJunit4Events));
+                }
             }
 
             TestSleuthRunContext runContext = runContextFactory.loadOrCreate(
@@ -105,7 +116,8 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         }
 
         TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(moduleEventFiles, fallbackEvents);
-        int junitLifecycleEvents = merger.countAttributeValue(mergedEvents.json(), "collector", "junit5-listener");
+        int junitLifecycleEvents = merger.countAttributeValue(mergedEvents.json(), "collector", "junit5-listener")
+                + merger.countAttributeValue(mergedEvents.json(), "collector", "junit4-listener");
         MavenTestReportScanner.ScanResult scanResult = new MavenTestReportScanner.ScanResult(scannedEvents);
         MavenTimingSummary timingSummary = MavenTimingSummary.from(aggregateLifecycleWindow(moduleLifecycleWindows), detectorEvents);
         List<Finding> findings = detectFindings(config, detectorEvents);

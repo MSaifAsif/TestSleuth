@@ -81,7 +81,7 @@ mvn -pl testsleuth-samples/slow-junit5-maven verify
 ```
 
 The sample produces default slow-test findings without lowering the `1000ms` threshold,
-and includes fixed-wait, setup-heavy, and Spring-style framework initialization examples.
+and includes fixed-wait, setup-heavy, legacy JUnit 4, and Spring-style framework initialization examples.
 
 ### Maven Report Configuration
 
@@ -118,6 +118,8 @@ Current options:
 
 The `testsleuth-junit5` module provides a JUnit Platform `TestExecutionListener` and a JUnit Jupiter extension. When it is present on the test runtime classpath and the `testsleuth.junit.events.file` system property is set, it writes JUnit lifecycle events to that JSON file. The Maven instrumentation goal enables listener and Jupiter extension autodetection so per-test setup and teardown phase events are captured when JUnit Jupiter is present.
 
+The `testsleuth-junit4` module provides a JUnit 4 `RunListener` for legacy Surefire/Failsafe JUnit 4 provider runs. Maven instrumentation injects this listener automatically and writes JUnit 4 lifecycle events to `target/testsleuth/junit4-events.json`, which is merged into the normal `events.json` report output. Mixed JUnit 4/JUnit 5 suites that run JUnit 4 tests through the JUnit Vintage engine are still visible through Maven XML and JUnit Platform events.
+
 The Maven `testsleuth:instrument` goal adds the listener dependency and sets the required JUnit Platform properties for the current Maven session.
 
 ## License
@@ -128,6 +130,7 @@ TestSleuth is licensed under the Apache License, Version 2.0. See [LICENSE.txt](
 
 ```text
 testsleuth-core
+testsleuth-junit4
 testsleuth-junit5
 testsleuth-report
 testsleuth-maven-plugin

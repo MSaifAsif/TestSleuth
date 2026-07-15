@@ -2,7 +2,7 @@
 
 This sample contains intentionally slow tests for validating TestSleuth behavior.
 It covers direct slow tests, fixed waits, repeated polling-style delays, setup-heavy tests,
-and Spring-style framework initialization patterns without requiring Spring dependencies.
+legacy JUnit 4 tests, and Spring-style framework initialization patterns without requiring Spring dependencies.
 
 Run the sample with TestSleuth:
 

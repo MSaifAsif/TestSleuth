@@ -13,6 +13,7 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 
 - Maven reactor with Java 17.
 - Core event and finding models in `testsleuth-core`.
+- JUnit 4 listener in `testsleuth-junit4`.
 - JUnit Platform listener in `testsleuth-junit5`.
 - Basic HTML rendering in `testsleuth-report`.
 - Maven plugin goals in `testsleuth-maven-plugin`:
@@ -34,7 +35,9 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 - Maven console output includes TestSleuth report overhead.
 - HTML reports include a run summary scorecard, top opportunity, and category breakdown.
 - JUnit 5 instrumentation includes a Jupiter extension for per-test setup and teardown phase events.
+- JUnit 4 instrumentation includes a RunListener and `junit4-events.json` merge path.
 - Slow JUnit 5 Maven sample includes Spring-style framework initialization scenarios without external Spring dependencies.
+- Slow Maven sample includes a legacy JUnit 4 test through the Vintage engine.
 - Slow JUnit 5 Maven sample bound into the normal Maven lifecycle.
 
 ## Important Commands
@@ -72,6 +75,7 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 ## Repository Map
 
 - `testsleuth-core`: framework-neutral event, finding, detector, and JSON model.
+- `testsleuth-junit4`: JUnit 4 RunListener lifecycle collector.
 - `testsleuth-junit5`: JUnit Platform lifecycle listener.
 - `testsleuth-report`: HTML report renderer.
 - `testsleuth-maven-plugin`: Maven instrumentation, report generation, aggregation, console output, and Maven-specific detectors.
@@ -95,10 +99,10 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 
 ## Current Next Steps
 
-1. Add richer source detectors for polling libraries and framework-specific waits.
-2. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
-3. Add richer framework-initialization events beyond source/timing correlation.
-3. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
+1. Validate JUnit 4 auto-injection against a pure JUnit 4 Maven sample or external project.
+2. Add richer source detectors for polling libraries and framework-specific waits.
+3. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
+4. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
 
 ## Verification Expectations
 

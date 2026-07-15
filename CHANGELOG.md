@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `testsleuth-junit5` module with a JUnit Platform listener that records discovered, started, and finished test events.
+- `testsleuth-junit4` module with a JUnit 4 RunListener that records started and finished test events.
 - Maven `testsleuth:instrument` goal that prepares JUnit listener auto-detection before tests run.
 - Maven `testsleuth:report` now merges JUnit lifecycle events with Maven XML report events when both are present.
 - First timing-based Maven detector that reports the slowest observed tests as investigation findings.
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Maven reports now include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
 - Maven console and HTML summaries now include initial timing reconciliation for Maven-reported test time, JUnit-observed test time, setup time, teardown time, and lifecycle remainder.
 - JUnit 5 instrumentation now captures per-test setup and teardown phase events through a Jupiter extension.
+- Maven instrumentation now injects JUnit 4 listener support and merges `junit4-events.json` into normal reports.
 - HTML reports now include a run summary scorecard, top opportunity, and category breakdown.
 - Maven console output now reports TestSleuth report overhead.
 - Slow Maven/JUnit 5 sample now includes Spring-style framework initialization scenarios without external Spring dependencies.
