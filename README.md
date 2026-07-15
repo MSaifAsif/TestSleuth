@@ -35,6 +35,19 @@ Full whole-build timing and automatic lifecycle binding are still upcoming roadm
 
 The report currently includes timing-based findings for the slowest tests observed in Maven test reports. These are investigation findings, not yet root-cause diagnoses.
 
+## Sample Project
+
+The repository includes an intentionally slow Maven/JUnit 5 sample:
+
+```bash
+mvn -pl testsleuth-samples/slow-junit5-maven \
+  dev.testsleuth:testsleuth-maven-plugin:0.1.0-SNAPSHOT:instrument \
+  test \
+  dev.testsleuth:testsleuth-maven-plugin:0.1.0-SNAPSHOT:report
+```
+
+The sample produces a default slow-test finding without lowering the `1000ms` threshold.
+
 ### Maven Report Configuration
 
 The report goal is configurable with Maven properties:

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - First timing-based Maven detector that reports the slowest observed tests as investigation findings.
 - Configurable Maven report thresholds, finding limits, detector flags, and console detail.
 - Concise CI-oriented console summary from `testsleuth:report`.
+- Intentionally slow Maven/JUnit 5 sample project for validating default findings.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.

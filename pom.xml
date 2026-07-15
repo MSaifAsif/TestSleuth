@@ -17,6 +17,7 @@
         <module>testsleuth-junit5</module>
         <module>testsleuth-report</module>
         <module>testsleuth-maven-plugin</module>
+        <module>testsleuth-samples/slow-junit5-maven</module>
     </modules>
 
     <properties>

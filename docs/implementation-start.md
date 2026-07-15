@@ -18,12 +18,13 @@ The first implementation milestone is a buildable repository foundation that ref
 - First timing-based Maven detector for slow observed tests.
 - Configurable slow-test thresholds, finding limits, detector flags, and console verbosity.
 - CI-oriented console summary from the Maven report goal.
+- Intentionally slow Maven/JUnit 5 sample project for validating default findings.
 - ADRs for repository foundation, measurement separation, and local-first behavior.
 
 ## Next
 
 1. Extend the event schema with build-run, module, worker, fork, and process identifiers.
-2. Add intentionally slow sample projects under a benchmark or samples module.
-3. Reconcile collector events with Maven XML report events.
-4. Add stable build-run, module, worker, fork, and process identifiers.
-5. Start detector APIs outside the Maven plugin module.
+2. Reconcile collector events with Maven XML report events.
+3. Add stable build-run, module, worker, fork, and process identifiers.
+4. Start detector APIs outside the Maven plugin module.
+5. Add more benchmark scenarios for setup, waits, and framework initialization.
