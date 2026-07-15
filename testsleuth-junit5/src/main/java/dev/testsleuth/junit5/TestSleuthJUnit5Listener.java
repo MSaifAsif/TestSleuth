@@ -11,7 +11,8 @@ import java.util.Optional;
 public final class TestSleuthJUnit5Listener implements TestExecutionListener {
     public static final String EVENTS_FILE_PROPERTY = "testsleuth.junit.events.file";
 
-    private final JUnitLifecycleEventCollector collector = new JUnitLifecycleEventCollector();
+    private static final JUnitLifecycleEventCollector SHARED_COLLECTOR = new JUnitLifecycleEventCollector();
+    private final JUnitLifecycleEventCollector collector = SHARED_COLLECTOR;
     private final Optional<Path> eventsFile;
 
     public TestSleuthJUnit5Listener() {
@@ -20,6 +21,10 @@ public final class TestSleuthJUnit5Listener implements TestExecutionListener {
 
     TestSleuthJUnit5Listener(Path eventsFile) {
         this.eventsFile = Optional.of(eventsFile);
+    }
+
+    static JUnitLifecycleEventCollector sharedCollector() {
+        return SHARED_COLLECTOR;
     }
 
     @Override
@@ -50,4 +55,3 @@ public final class TestSleuthJUnit5Listener implements TestExecutionListener {
         return Optional.of(Path.of(configured));
     }
 }
-

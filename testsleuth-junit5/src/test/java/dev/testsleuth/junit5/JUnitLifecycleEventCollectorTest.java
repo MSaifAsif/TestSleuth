@@ -42,6 +42,58 @@ final class JUnitLifecycleEventCollectorTest {
     }
 
     @Test
+    void recordsSetupAndTeardownPhaseEvents() throws Exception {
+        JUnitLifecycleEventCollector collector = new JUnitLifecycleEventCollector();
+
+        collector.recordPhaseStarted(
+                EventKind.SETUP_STARTED,
+                "before-each",
+                "phase-id",
+                "passes",
+                java.util.Optional.of(ExampleTest.class),
+                java.util.Optional.of(ExampleTest.class.getDeclaredMethod("passes"))
+        );
+        collector.recordPhaseFinished(
+                EventKind.SETUP_FINISHED,
+                "before-each",
+                "phase-id",
+                "passes",
+                java.util.Optional.of(ExampleTest.class),
+                java.util.Optional.of(ExampleTest.class.getDeclaredMethod("passes"))
+        );
+        collector.recordPhaseStarted(
+                EventKind.TEARDOWN_STARTED,
+                "after-each",
+                "phase-id",
+                "passes",
+                java.util.Optional.of(ExampleTest.class),
+                java.util.Optional.of(ExampleTest.class.getDeclaredMethod("passes"))
+        );
+        collector.recordPhaseFinished(
+                EventKind.TEARDOWN_FINISHED,
+                "after-each",
+                "phase-id",
+                "passes",
+                java.util.Optional.of(ExampleTest.class),
+                java.util.Optional.of(ExampleTest.class.getDeclaredMethod("passes"))
+        );
+
+        List<TestSleuthEvent> events = collector.events();
+        assertEquals(EventKind.SETUP_STARTED, events.get(0).kind());
+        assertEquals(EventKind.SETUP_FINISHED, events.get(1).kind());
+        assertEquals(EventKind.TEARDOWN_STARTED, events.get(2).kind());
+        assertEquals(EventKind.TEARDOWN_FINISHED, events.get(3).kind());
+        assertEquals("before-each", events.get(1).attributes().get("phase"));
+        assertEquals("after-each", events.get(3).attributes().get("phase"));
+        assertEquals(
+                JUnitLifecycleEventCollectorTest.ExampleTest.class.getName() + ".passes",
+                events.get(1).attributes().get("testIdentity")
+        );
+        assertTrue(Long.parseLong(events.get(1).attributes().get("durationMillis")) >= 0);
+        assertTrue(Long.parseLong(events.get(3).attributes().get("durationMillis")) >= 0);
+    }
+
+    @Test
     void writesEventsToConfiguredFile() throws Exception {
         JUnitLifecycleEventCollector collector = new JUnitLifecycleEventCollector();
         TestIdentifier test = testIdentifier("test-id", "passes");
@@ -64,6 +116,12 @@ final class JUnitLifecycleEventCollectorTest {
                 displayName,
                 MethodSource.from("dev.testsleuth.ExampleTest", displayName)
         ));
+    }
+
+    private static final class ExampleTest {
+        @SuppressWarnings("unused")
+        void passes() {
+        }
     }
 
     private static final class TestDescriptorStub extends AbstractTestDescriptor {

@@ -1,8 +1,15 @@
 package dev.testsleuth.report;
 
 import dev.testsleuth.report.HtmlReportRenderer.ReportModel;
+import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.FindingCategory;
+import dev.testsleuth.core.finding.FindingId;
+import dev.testsleuth.core.finding.FindingSeverity;
+import dev.testsleuth.core.finding.TimeSavingEstimate;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -21,5 +28,43 @@ final class HtmlReportRendererTest {
         assertTrue(html.contains("Observed &amp; ranked"));
         assertFalse(html.contains("Test <Suite>"));
     }
-}
 
+    @Test
+    void rendersScorecardAndCategoryBreakdown() {
+        String html = new HtmlReportRenderer().render(new ReportModel(
+                "TestSleuth Report",
+                "Observed tests",
+                List.of(
+                        finding("Slow observed test: slowOne", FindingCategory.BUILD_RUNNER, 1_500),
+                        finding("Fixed wait in test source: Example.java:10", FindingCategory.WAITING, 500)
+                )
+        ));
+
+        assertTrue(html.contains("Run Summary"));
+        assertTrue(html.contains("<strong>2</strong>"));
+        assertTrue(html.contains("<strong>2.000 s</strong>"));
+        assertTrue(html.contains("Top Opportunity"));
+        assertTrue(html.contains("Slow observed test: slowOne"));
+        assertTrue(html.contains("Category Breakdown"));
+        assertTrue(html.contains("BUILD_RUNNER: 1"));
+        assertTrue(html.contains("WAITING: 1"));
+    }
+
+    private static Finding finding(String title, FindingCategory category, long observedMillis) {
+        return new Finding(
+                new FindingId(title.replaceAll("[^A-Za-z0-9]", "-")),
+                title,
+                category,
+                FindingSeverity.MEDIUM,
+                Confidence.MEDIUM,
+                Duration.ofMillis(observedMillis),
+                new TimeSavingEstimate(Duration.ZERO, Duration.ofMillis(observedMillis)),
+                List.of("ExampleTest"),
+                List.of("Evidence."),
+                "Root cause.",
+                "Recommended action.",
+                "Trade-offs.",
+                "Verification."
+        );
+    }
+}

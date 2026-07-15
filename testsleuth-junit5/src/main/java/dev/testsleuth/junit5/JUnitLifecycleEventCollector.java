@@ -14,6 +14,7 @@ import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +30,7 @@ import java.util.function.Consumer;
 public final class JUnitLifecycleEventCollector {
     private final List<TestSleuthEvent> events = new ArrayList<>();
     private final Map<String, Long> startedNanos = new HashMap<>();
+    private final Map<String, Long> phaseStartedNanos = new HashMap<>();
     private final TestSleuthRunContext runContext;
 
     public JUnitLifecycleEventCollector() {
@@ -89,6 +91,54 @@ public final class JUnitLifecycleEventCollector {
         return List.copyOf(events);
     }
 
+    void recordPhaseStarted(
+            EventKind kind,
+            String phase,
+            String uniqueId,
+            String displayName,
+            Optional<Class<?>> testClass,
+            Optional<Method> testMethod
+    ) {
+        Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        Objects.requireNonNull(displayName, "displayName");
+        Objects.requireNonNull(testClass, "testClass");
+        Objects.requireNonNull(testMethod, "testMethod");
+
+        phaseStartedNanos.put(phaseKey(phase, uniqueId), System.nanoTime());
+        events.add(toPhaseEvent(kind, phase, uniqueId, displayName, testClass, testMethod, Map.of()));
+    }
+
+    void recordPhaseFinished(
+            EventKind kind,
+            String phase,
+            String uniqueId,
+            String displayName,
+            Optional<Class<?>> testClass,
+            Optional<Method> testMethod
+    ) {
+        Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(uniqueId, "uniqueId");
+        Objects.requireNonNull(displayName, "displayName");
+        Objects.requireNonNull(testClass, "testClass");
+        Objects.requireNonNull(testMethod, "testMethod");
+
+        long now = System.nanoTime();
+        long started = phaseStartedNanos.getOrDefault(phaseKey(phase, uniqueId), now);
+        long durationMillis = Math.max(0, Math.round((now - started) / 1_000_000.0));
+        events.add(toPhaseEvent(
+                kind,
+                phase,
+                uniqueId,
+                displayName,
+                testClass,
+                testMethod,
+                Map.of("durationMillis", Long.toString(durationMillis))
+        ));
+    }
+
     public void writeTo(Path eventsFile, Consumer<String> failureReporter) {
         Objects.requireNonNull(eventsFile, "eventsFile");
         Objects.requireNonNull(failureReporter, "failureReporter");
@@ -132,6 +182,41 @@ public final class JUnitLifecycleEventCollector {
         );
     }
 
+    private TestSleuthEvent toPhaseEvent(
+            EventKind kind,
+            String phase,
+            String uniqueId,
+            String displayName,
+            Optional<Class<?>> testClass,
+            Optional<Method> testMethod,
+            Map<String, String> attributes
+    ) {
+        Map<String, String> eventAttributes = new HashMap<>();
+        eventAttributes.putAll(runContext.attributes());
+        eventAttributes.put("collector", "junit5-listener");
+        eventAttributes.put("phase", phase);
+        eventAttributes.put("uniqueId", uniqueId);
+        eventAttributes.put("displayName", displayName);
+        testClass.map(Class::getName).ifPresent(value -> eventAttributes.put("className", value));
+        testMethod.ifPresent(method -> {
+            eventAttributes.put("methodName", method.getName());
+            testClass.map(Class::getName)
+                    .map(className -> TestSubjectIdentity.testMethod(className, method.getName()))
+                    .ifPresent(value -> eventAttributes.put("testIdentity", value));
+        });
+        eventAttributes.putAll(attributes);
+
+        return new TestSleuthEvent(
+                new EventId("junit5:" + kind.name() + ":" + safeId(phase) + ":" + safeId(uniqueId)),
+                Optional.empty(),
+                kind,
+                new Subject(subjectType(testClass, testMethod), subjectIdentifier(displayName, testClass, testMethod)),
+                Instant.now(),
+                System.nanoTime(),
+                eventAttributes
+        );
+    }
+
     private static String subjectIdentifier(TestIdentifier testIdentifier) {
         return methodSource(testIdentifier)
                 .map(source -> TestSubjectIdentity.testMethod(source.getClassName(), source.getMethodName()))
@@ -154,6 +239,27 @@ public final class JUnitLifecycleEventCollector {
         return SubjectType.TEST_METHOD;
     }
 
+    private static SubjectType subjectType(Optional<Class<?>> testClass, Optional<Method> testMethod) {
+        if (testMethod.isPresent()) {
+            return SubjectType.TEST_METHOD;
+        }
+        if (testClass.isPresent()) {
+            return SubjectType.TEST_CLASS;
+        }
+        return SubjectType.SUITE;
+    }
+
+    private static String subjectIdentifier(
+            String displayName,
+            Optional<Class<?>> testClass,
+            Optional<Method> testMethod
+    ) {
+        if (testClass.isPresent() && testMethod.isPresent()) {
+            return TestSubjectIdentity.testMethod(testClass.orElseThrow().getName(), testMethod.orElseThrow().getName());
+        }
+        return testClass.map(Class::getName).orElse(displayName);
+    }
+
     private static String status(TestExecutionResult testExecutionResult) {
         return switch (testExecutionResult.getStatus()) {
             case SUCCESSFUL -> "passed";
@@ -164,5 +270,9 @@ public final class JUnitLifecycleEventCollector {
 
     private static String safeId(String value) {
         return value.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    private static String phaseKey(String phase, String uniqueId) {
+        return phase + ":" + uniqueId;
     }
 }

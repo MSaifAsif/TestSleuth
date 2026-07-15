@@ -1,6 +1,7 @@
 package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.TestSleuthRunContext;
+import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
@@ -31,6 +32,7 @@ final class MavenTestInstrumentationTest {
         assertTrue(result.dependencyAdded());
         assertEquals(eventsFile, result.eventsFile());
         assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_LISTENER_AUTODETECTION_PROPERTY));
+        assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY));
         assertEquals(eventsFile.toString(), userProperties.getProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY));
         assertEquals("run-1", userProperties.getProperty(TestSleuthRunContext.BUILD_RUN_ID_PROPERTY));
         assertEquals("dev.testsleuth:sample", userProperties.getProperty(TestSleuthRunContext.MODULE_ID_PROPERTY));
@@ -48,6 +50,9 @@ final class MavenTestInstrumentationTest {
         Xpp3Dom configuration = (Xpp3Dom) surefire.getConfiguration();
         assertEquals("true", configuration.getChild("systemPropertyVariables")
                 .getChild(MavenTestInstrumentation.JUNIT_LISTENER_AUTODETECTION_PROPERTY)
+                .getValue());
+        assertEquals("true", configuration.getChild("systemPropertyVariables")
+                .getChild(TestSleuthJUnit5Extension.AUTODETECTION_PROPERTY)
                 .getValue());
         assertEquals(eventsFile.toString(), configuration.getChild("systemPropertyVariables")
                 .getChild(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY)

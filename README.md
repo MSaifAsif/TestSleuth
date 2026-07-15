@@ -70,6 +70,8 @@ Projects can also bind the plugin into the Maven lifecycle so normal `mvn verify
 
 The report currently includes timing-based findings for the slowest tests observed in Maven test reports. Findings include joined JUnit/Maven collector evidence and run context such as module, build run, Maven project, process, and fork when available. `findings.json` contains the same finding payload for CI systems and other tooling. These are investigation findings, not yet root-cause diagnoses.
 
+Console and HTML summaries also include an initial timing reconciliation: Maven-reported test time, JUnit-observed test time, JUnit setup and teardown time, and the remaining observed Maven lifecycle window when available. The lifecycle remainder is a coarse signal for build setup, compilation, runner overhead, framework initialization, or other work not yet attributed to a specific test phase. Console output includes TestSleuth report overhead. The HTML report includes a run summary scorecard, top opportunity, and category breakdown before the detailed findings table.
+
 ## Sample Project
 
 The repository includes an intentionally slow Maven/JUnit 5 sample:
@@ -94,6 +96,7 @@ mvn testsleuth:instrument test testsleuth:report \
   -Dtestsleuth.findings.max=10 \
   -Dtestsleuth.detectors.fixedWaits=false \
   -Dtestsleuth.detectors.pollingWaits=false \
+  -Dtestsleuth.detectors.frameworkInitialization=false \
   -Dtestsleuth.console.detail=summary
 ```
 
@@ -109,10 +112,11 @@ Current options:
 - `testsleuth.detectors.slowTests`: enables the current slow-test detector; default is `true`.
 - `testsleuth.detectors.fixedWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls; default is `false`.
 - `testsleuth.detectors.pollingWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls inside nearby loops; default is `false`.
+- `testsleuth.detectors.frameworkInitialization`: enables opt-in source and timing correlation for framework/application-context initialization candidates; default is `false`.
 
 ## Current JUnit 5 Listener
 
-The `testsleuth-junit5` module provides a JUnit Platform `TestExecutionListener`. When it is present on the test runtime classpath and the `testsleuth.junit.events.file` system property is set, it writes JUnit lifecycle events to that JSON file.
+The `testsleuth-junit5` module provides a JUnit Platform `TestExecutionListener` and a JUnit Jupiter extension. When it is present on the test runtime classpath and the `testsleuth.junit.events.file` system property is set, it writes JUnit lifecycle events to that JSON file. The Maven instrumentation goal enables listener and Jupiter extension autodetection so per-test setup and teardown phase events are captured when JUnit Jupiter is present.
 
 The Maven `testsleuth:instrument` goal adds the listener dependency and sets the required JUnit Platform properties for the current Maven session.
 

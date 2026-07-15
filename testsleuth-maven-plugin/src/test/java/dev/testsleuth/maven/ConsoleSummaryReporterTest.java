@@ -27,7 +27,15 @@ final class ConsoleSummaryReporterTest {
                 config,
                 new MavenTestReportScanner.ScanResult(List.of()),
                 3,
-                java.util.Optional.of(Duration.ofMillis(2_500)),
+                new MavenTimingSummary(
+                        java.util.Optional.of(Duration.ofMillis(2_500)),
+                        Duration.ofMillis(1_500),
+                        Duration.ofMillis(1_450),
+                        Duration.ofMillis(100),
+                        Duration.ofMillis(50),
+                        java.util.Optional.of(Duration.ofMillis(1_000))
+                ),
+                Duration.ofMillis(75),
                 List.of(finding()),
                 Path.of("target/testsleuth/index.html"),
                 Path.of("target/testsleuth/events.json"),
@@ -36,6 +44,12 @@ final class ConsoleSummaryReporterTest {
 
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] Maven lifecycle window: 2500 ms"
+        )));
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "[TestSleuth] Timing: Maven tests 1500 ms, JUnit observed 1450 ms, setup 100 ms, teardown 50 ms, lifecycle remainder 1000 ms"
+        )));
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "[TestSleuth] Report overhead: 75 ms"
         )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] - MEDIUM Slow observed test: slowExample "

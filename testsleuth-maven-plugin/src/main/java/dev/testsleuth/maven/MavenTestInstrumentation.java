@@ -2,6 +2,7 @@ package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.EventJsonWriter;
 import dev.testsleuth.core.event.TestSleuthRunContext;
+import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 final class MavenTestInstrumentation {
     static final String JUNIT_LISTENER_AUTODETECTION_PROPERTY = "junit.platform.listeners.autodetection.enabled";
+    static final String JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY = TestSleuthJUnit5Extension.AUTODETECTION_PROPERTY;
     static final String TESTSLEUTH_JUNIT5_GROUP_ID = "dev.testsleuth";
     static final String TESTSLEUTH_JUNIT5_ARTIFACT_ID = "testsleuth-junit5";
     static final String MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY = "maven.test.additionalClasspath";
@@ -43,6 +45,7 @@ final class MavenTestInstrumentation {
 
         boolean dependencyAdded = ensureJUnit5Dependency(project, testSleuthVersion);
         userProperties.setProperty(JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
+        userProperties.setProperty(JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
         userProperties.setProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
         setUserProperties(userProperties, runContext);
         appendAdditionalClasspath(userProperties);
@@ -81,6 +84,7 @@ final class MavenTestInstrumentation {
         Xpp3Dom configuration = configuration(plugin);
         Xpp3Dom systemProperties = child(configuration, "systemPropertyVariables");
         setChildValue(systemProperties, JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
+        setChildValue(systemProperties, JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
         setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, eventsFile.toString());
         setContextSystemProperties(systemProperties, runContext);
 

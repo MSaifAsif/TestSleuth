@@ -14,7 +14,8 @@ final class ConsoleSummaryReporter {
             TestSleuthMavenConfig config,
             MavenTestReportScanner.ScanResult scanResult,
             int junitLifecycleEventCount,
-            java.util.Optional<java.time.Duration> lifecycleWindow,
+            MavenTimingSummary timingSummary,
+            java.time.Duration reportGenerationTime,
             List<Finding> findings,
             Path htmlReport,
             Path eventsFile,
@@ -23,7 +24,8 @@ final class ConsoleSummaryReporter {
         Objects.requireNonNull(log, "log");
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(scanResult, "scanResult");
-        Objects.requireNonNull(lifecycleWindow, "lifecycleWindow");
+        Objects.requireNonNull(timingSummary, "timingSummary");
+        Objects.requireNonNull(reportGenerationTime, "reportGenerationTime");
         Objects.requireNonNull(findings, "findings");
         Objects.requireNonNull(htmlReport, "htmlReport");
         Objects.requireNonNull(eventsFile, "eventsFile");
@@ -38,8 +40,10 @@ final class ConsoleSummaryReporter {
 
         log.info("[TestSleuth] Tests observed: " + scanResult.testCount());
         log.info("[TestSleuth] JUnit lifecycle events: " + junitLifecycleEventCount);
-        lifecycleWindow.ifPresent(duration ->
+        timingSummary.lifecycleWindow().ifPresent(duration ->
                 log.info("[TestSleuth] Maven lifecycle window: " + duration.toMillis() + " ms"));
+        log.info(timingSummary.consoleLine());
+        log.info("[TestSleuth] Report overhead: " + reportGenerationTime.toMillis() + " ms");
         log.info("[TestSleuth] Findings: " + findings.size() + " above configured thresholds");
         log.info("[TestSleuth] Slow-test threshold: " + config.slowTestThreshold().toMillis() + " ms");
 

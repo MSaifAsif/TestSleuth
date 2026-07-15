@@ -27,8 +27,13 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 - Slow-test detector using joined JUnit lifecycle and Maven XML events.
 - Opt-in fixed-wait source detector for direct `Thread.sleep(...)` calls.
 - Opt-in polling-wait source detector for direct `Thread.sleep(...)` calls inside nearby loops.
+- Opt-in framework-initialization candidate detector that correlates application-context source indicators with observed class duration.
 - Maven XML report events include Surefire/Failsafe runner metadata and configured fork settings when available.
 - Maven reports include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
+- Maven console and HTML summaries include initial timing reconciliation for Maven-reported test time, JUnit-observed test time, setup time, teardown time, and lifecycle remainder.
+- Maven console output includes TestSleuth report overhead.
+- HTML reports include a run summary scorecard, top opportunity, and category breakdown.
+- JUnit 5 instrumentation includes a Jupiter extension for per-test setup and teardown phase events.
 - Slow JUnit 5 Maven sample includes Spring-style framework initialization scenarios without external Spring dependencies.
 - Slow JUnit 5 Maven sample bound into the normal Maven lifecycle.
 
@@ -52,6 +57,7 @@ Run the sample with fixed-wait source detection and detailed logs:
 mvn -pl testsleuth-samples/slow-junit5-maven verify \
   -Dtestsleuth.detectors.fixedWaits=true \
   -Dtestsleuth.detectors.pollingWaits=true \
+  -Dtestsleuth.detectors.frameworkInitialization=true \
   -Dtestsleuth.console.detail=findings
 ```
 
@@ -90,7 +96,8 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 ## Current Next Steps
 
 1. Add richer source detectors for polling libraries and framework-specific waits.
-2. Improve wall-clock/build-phase timing coverage beyond the initial lifecycle window.
+2. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
+3. Add richer framework-initialization events beyond source/timing correlation.
 3. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
 
 ## Verification Expectations

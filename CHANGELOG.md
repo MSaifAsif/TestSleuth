@@ -31,8 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Root `AGENTS.md` Codex context document for future agent sessions.
 - Maven XML report events now include Surefire/Failsafe runner metadata and configured fork settings when available.
 - Maven reports now include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
+- Maven console and HTML summaries now include initial timing reconciliation for Maven-reported test time, JUnit-observed test time, setup time, teardown time, and lifecycle remainder.
+- JUnit 5 instrumentation now captures per-test setup and teardown phase events through a Jupiter extension.
+- HTML reports now include a run summary scorecard, top opportunity, and category breakdown.
+- Maven console output now reports TestSleuth report overhead.
 - Slow Maven/JUnit 5 sample now includes Spring-style framework initialization scenarios without external Spring dependencies.
 - Opt-in polling-wait source detector for direct `Thread.sleep(...)` calls inside loops.
+- Opt-in framework-initialization candidate detector that correlates application-context source indicators with observed class duration.
 - Maven report goal now scans Surefire and Failsafe XML reports and writes `events.json`.
 - Initial Maven reactor repository foundation.
 - Core event and finding model stubs.

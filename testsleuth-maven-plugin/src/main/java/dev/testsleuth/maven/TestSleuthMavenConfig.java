@@ -14,7 +14,8 @@ record TestSleuthMavenConfig(
         int maxFindings,
         boolean slowTestsDetectorEnabled,
         boolean fixedWaitsDetectorEnabled,
-        boolean pollingWaitsDetectorEnabled
+        boolean pollingWaitsDetectorEnabled,
+        boolean frameworkInitializationDetectorEnabled
 ) {
     static final boolean DEFAULT_CONSOLE_ENABLED = true;
     static final ConsoleDetail DEFAULT_CONSOLE_DETAIL = ConsoleDetail.SUMMARY;
@@ -26,6 +27,7 @@ record TestSleuthMavenConfig(
     static final boolean DEFAULT_SLOW_TESTS_DETECTOR_ENABLED = true;
     static final boolean DEFAULT_FIXED_WAITS_DETECTOR_ENABLED = false;
     static final boolean DEFAULT_POLLING_WAITS_DETECTOR_ENABLED = false;
+    static final boolean DEFAULT_FRAMEWORK_INITIALIZATION_DETECTOR_ENABLED = false;
 
     TestSleuthMavenConfig {
         Objects.requireNonNull(consoleDetail, "consoleDetail");
@@ -70,7 +72,8 @@ record TestSleuthMavenConfig(
                 fixedWaitsDetectorEnabled,
                 fixedWaitMillis,
                 DEFAULT_POLLING_WAITS_DETECTOR_ENABLED,
-                DEFAULT_POLLING_WAIT_MILLIS
+                DEFAULT_POLLING_WAIT_MILLIS,
+                DEFAULT_FRAMEWORK_INITIALIZATION_DETECTOR_ENABLED
         );
     }
 
@@ -86,6 +89,34 @@ record TestSleuthMavenConfig(
             boolean pollingWaitsDetectorEnabled,
             long pollingWaitMillis
     ) {
+        return from(
+                consoleEnabled,
+                consoleDetail,
+                slowTestMillis,
+                verySlowTestMillis,
+                maxFindings,
+                slowTestsDetectorEnabled,
+                fixedWaitsDetectorEnabled,
+                fixedWaitMillis,
+                pollingWaitsDetectorEnabled,
+                pollingWaitMillis,
+                DEFAULT_FRAMEWORK_INITIALIZATION_DETECTOR_ENABLED
+        );
+    }
+
+    static TestSleuthMavenConfig from(
+            boolean consoleEnabled,
+            String consoleDetail,
+            long slowTestMillis,
+            long verySlowTestMillis,
+            int maxFindings,
+            boolean slowTestsDetectorEnabled,
+            boolean fixedWaitsDetectorEnabled,
+            long fixedWaitMillis,
+            boolean pollingWaitsDetectorEnabled,
+            long pollingWaitMillis,
+            boolean frameworkInitializationDetectorEnabled
+    ) {
         return new TestSleuthMavenConfig(
                 consoleEnabled,
                 ConsoleDetail.parse(consoleDetail),
@@ -96,7 +127,8 @@ record TestSleuthMavenConfig(
                 maxFindings,
                 slowTestsDetectorEnabled,
                 fixedWaitsDetectorEnabled,
-                pollingWaitsDetectorEnabled
+                pollingWaitsDetectorEnabled,
+                frameworkInitializationDetectorEnabled
         );
     }
 

@@ -59,8 +59,12 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.detectors.pollingWaits", defaultValue = "false")
     private boolean pollingWaitsDetectorEnabled;
 
+    @Parameter(property = "testsleuth.detectors.frameworkInitialization", defaultValue = "false")
+    private boolean frameworkInitializationDetectorEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
+        long reportStartedNanos = System.nanoTime();
         TestSleuthMavenConfig config = createConfig();
         Path output = Path.of(outputDirectory);
         Path report = output.resolve("index.html");
@@ -103,7 +107,9 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(moduleEventFiles, fallbackEvents);
         int junitLifecycleEvents = merger.countAttributeValue(mergedEvents.json(), "collector", "junit5-listener");
         MavenTestReportScanner.ScanResult scanResult = new MavenTestReportScanner.ScanResult(scannedEvents);
+        MavenTimingSummary timingSummary = MavenTimingSummary.from(aggregateLifecycleWindow(moduleLifecycleWindows), detectorEvents);
         List<Finding> findings = detectFindings(config, detectorEvents);
+        java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
 
         ReportModel model = new ReportModel(
                 "TestSleuth Aggregate Report",
@@ -111,6 +117,8 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                         + scanResult.testCount() + " Maven test results, and "
                         + junitLifecycleEvents + " JUnit lifecycle events. "
                         + aggregateLifecycleSummary(moduleLifecycleWindows)
+                        + timingSummary.reportSentence()
+                        + reportOverheadSummary(reportPreparationTime)
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
                 findings
         );
@@ -123,13 +131,15 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to write aggregate TestSleuth report", e);
         }
+        java.time.Duration reportGenerationTime = elapsedSince(reportStartedNanos);
 
         new ConsoleSummaryReporter().report(
                 getLog(),
                 config,
                 scanResult,
                 junitLifecycleEvents,
-                aggregateLifecycleWindow(moduleLifecycleWindows),
+                timingSummary,
+                reportGenerationTime,
                 findings,
                 report,
                 events,
@@ -149,7 +159,8 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     fixedWaitsDetectorEnabled,
                     fixedWaitMillis,
                     pollingWaitsDetectorEnabled,
-                    pollingWaitMillis
+                    pollingWaitMillis,
+                    frameworkInitializationDetectorEnabled
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);
@@ -179,6 +190,8 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     .detect(reactorProject.getTestCompileSourceRoots()));
             findings.addAll(new MavenPollingWaitFindings(config, runContext)
                     .detect(reactorProject.getTestCompileSourceRoots()));
+            findings.addAll(new MavenFrameworkInitializationFindings(config, runContext)
+                    .detect(reactorProject.getTestCompileSourceRoots(), events));
         }
         return findings;
     }
@@ -204,5 +217,17 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
 
     private static java.util.Optional<java.time.Duration> aggregateLifecycleWindow(List<java.time.Duration> windows) {
         return windows.stream().max(java.util.Comparator.naturalOrder());
+    }
+
+    private static String reportOverheadSummary(java.time.Duration duration) {
+        return "TestSleuth report preparation " + duration.toMillis() + " ms. ";
+    }
+
+    private static java.time.Duration elapsedSince(long startedNanos) {
+        long elapsed = System.nanoTime() - startedNanos;
+        if (elapsed < 0) {
+            return java.time.Duration.ZERO;
+        }
+        return java.time.Duration.ofNanos(elapsed);
     }
 }

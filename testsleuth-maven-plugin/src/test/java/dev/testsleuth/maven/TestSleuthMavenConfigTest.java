@@ -42,4 +42,13 @@ final class TestSleuthMavenConfigTest {
 
         assertEquals("polling wait threshold must not be negative", exception.getMessage());
     }
+
+    @Test
+    void disablesFrameworkInitializationDetectorByDefault() {
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(
+                true, "summary", 1_000, 5_000, 10, true, false, 250, false, 100
+        );
+
+        assertEquals(false, config.frameworkInitializationDetectorEnabled());
+    }
 }

@@ -19,5 +19,6 @@ Enable source scanning for direct fixed waits and repeated polling-style delays 
 mvn -pl testsleuth-samples/slow-junit5-maven verify \
   -Dtestsleuth.detectors.fixedWaits=true \
   -Dtestsleuth.detectors.pollingWaits=true \
+  -Dtestsleuth.detectors.frameworkInitialization=true \
   -Dtestsleuth.console.detail=findings
 ```
