@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Configurable Maven report thresholds, finding limits, detector flags, and console detail.
 - Concise CI-oriented console summary from `testsleuth:report`.
 - Intentionally slow Maven/JUnit 5 sample project for validating default findings.
+- Intentionally slow pure Maven/JUnit 4 sample project for validating legacy RunListener integration.
 - Additional sample scenarios for fixed waits, polling-style delays, and setup-heavy tests.
 - Maven `testsleuth:aggregate-report` goal for root-level aggregation across reactor modules.
 - Canonical test identities shared by JUnit lifecycle events and Maven XML report events.
@@ -54,7 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- None yet.
+- Maven JUnit 4 listener injection now preserves existing Surefire/Failsafe listeners and avoids duplicate TestSleuth listener entries.
+- Maven instrumentation logs now describe both TestSleuth JUnit listener modules instead of only JUnit 5.
 
 ### Security
 

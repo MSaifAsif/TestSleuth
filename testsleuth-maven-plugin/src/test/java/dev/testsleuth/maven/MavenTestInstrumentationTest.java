@@ -124,6 +124,54 @@ final class MavenTestInstrumentationTest {
         assertEquals("3.3.1", surefire.getVersion());
     }
 
+    @Test
+    void appendsJUnit4RunListenerWithoutReplacingExistingSurefireListener() {
+        MavenProject project = new MavenProject(new Model());
+        Build build = new Build();
+        Plugin surefire = new Plugin();
+        surefire.setGroupId("org.apache.maven.plugins");
+        surefire.setArtifactId("maven-surefire-plugin");
+        Xpp3Dom configuration = new Xpp3Dom("configuration");
+        Xpp3Dom properties = new Xpp3Dom("properties");
+        Xpp3Dom listener = new Xpp3Dom("property");
+        Xpp3Dom name = new Xpp3Dom("name");
+        name.setValue("listener");
+        Xpp3Dom value = new Xpp3Dom("value");
+        value.setValue("com.example.ExistingListener");
+        listener.addChild(name);
+        listener.addChild(value);
+        properties.addChild(listener);
+        configuration.addChild(properties);
+        surefire.setConfiguration(configuration);
+        build.addPlugin(surefire);
+        project.setBuild(build);
+
+        new MavenTestInstrumentation()
+                .apply(
+                        project,
+                        new Properties(),
+                        Path.of("target/testsleuth/junit-events.json"),
+                        Path.of("target/testsleuth/junit4-events.json"),
+                        "0.1.0-SNAPSHOT",
+                        runContext()
+                );
+        new MavenTestInstrumentation()
+                .apply(
+                        project,
+                        new Properties(),
+                        Path.of("target/testsleuth/junit-events.json"),
+                        Path.of("target/testsleuth/junit4-events.json"),
+                        "0.1.0-SNAPSHOT",
+                        runContext()
+                );
+
+        String configuredListener = configuration.getChild("properties")
+                .getChild("property")
+                .getChild("value")
+                .getValue();
+        assertEquals("com.example.ExistingListener," + TestSleuthJUnit4RunListener.class.getName(), configuredListener);
+    }
+
     private static void assertInjectedDependency(MavenProject project, String artifactId) {
         Dependency dependency = project.getDependencies().stream()
                 .filter(candidate -> artifactId.equals(candidate.getArtifactId()))

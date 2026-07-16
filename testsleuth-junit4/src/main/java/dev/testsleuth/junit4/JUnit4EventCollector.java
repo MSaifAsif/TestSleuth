@@ -27,7 +27,8 @@ import java.util.function.Consumer;
 final class JUnit4EventCollector {
     private final List<TestSleuthEvent> events = new ArrayList<>();
     private final Map<String, Long> startedNanos = new HashMap<>();
-    private final Map<String, String> failures = new HashMap<>();
+    private final Map<String, String> statuses = new HashMap<>();
+    private final Map<String, String> throwableTypes = new HashMap<>();
     private final TestSleuthRunContext runContext;
 
     JUnit4EventCollector() {
@@ -54,7 +55,30 @@ final class JUnit4EventCollector {
         if (description == null || !description.isTest()) {
             return;
         }
-        failures.put(uniqueId(description), failure.getException().getClass().getName());
+        statuses.put(uniqueId(description), "failed");
+        throwableTypes.put(uniqueId(description), failure.getException().getClass().getName());
+    }
+
+    void recordAssumptionFailure(Failure failure) {
+        Objects.requireNonNull(failure, "failure");
+        Description description = failure.getDescription();
+        if (description == null || !description.isTest()) {
+            return;
+        }
+        statuses.put(uniqueId(description), "skipped");
+        throwableTypes.put(uniqueId(description), failure.getException().getClass().getName());
+    }
+
+    void recordIgnored(Description description) {
+        Objects.requireNonNull(description, "description");
+        if (!description.isTest()) {
+            return;
+        }
+
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("status", "skipped");
+        attributes.put("durationMillis", "0");
+        events.add(toEvent(EventKind.TEST_FINISHED, description, attributes));
     }
 
     void recordFinished(Description description) {
@@ -68,9 +92,9 @@ final class JUnit4EventCollector {
         long durationMillis = Math.max(0, Math.round((now - started) / 1_000_000.0));
 
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("status", failures.containsKey(uniqueId(description)) ? "failed" : "passed");
+        attributes.put("status", statuses.getOrDefault(uniqueId(description), "passed"));
         attributes.put("durationMillis", Long.toString(durationMillis));
-        Optional.ofNullable(failures.get(uniqueId(description)))
+        Optional.ofNullable(throwableTypes.get(uniqueId(description)))
                 .ifPresent(value -> attributes.put("throwableType", value));
 
         events.add(toEvent(EventKind.TEST_FINISHED, description, attributes));

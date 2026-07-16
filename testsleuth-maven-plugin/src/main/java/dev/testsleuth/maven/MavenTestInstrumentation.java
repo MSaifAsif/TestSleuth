@@ -97,7 +97,7 @@ final class MavenTestInstrumentation {
         setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, junit5EventsFile.toString());
         setChildValue(systemProperties, TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY, junit4EventsFile.toString());
         setContextSystemProperties(systemProperties, runContext);
-        setSurefireProperty(configuration, JUNIT4_SUREFIRE_LISTENER_PROPERTY, TestSleuthJUnit4RunListener.class.getName());
+        appendSurefireProperty(configuration, JUNIT4_SUREFIRE_LISTENER_PROPERTY, TestSleuthJUnit4RunListener.class.getName());
 
         Xpp3Dom dependencies = child(configuration, "additionalClasspathDependencies");
         addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
@@ -182,12 +182,14 @@ final class MavenTestInstrumentation {
         dependencies.addChild(dependency);
     }
 
-    private static void setSurefireProperty(Xpp3Dom configuration, String name, String value) {
+    private static void appendSurefireProperty(Xpp3Dom configuration, String name, String value) {
         Xpp3Dom properties = child(configuration, "properties");
         for (Xpp3Dom property : properties.getChildren("property")) {
             Xpp3Dom propertyName = property.getChild("name");
             if (propertyName != null && name.equals(propertyName.getValue())) {
-                setChildValue(property, "value", value);
+                Xpp3Dom propertyValue = property.getChild("value");
+                String existingValue = propertyValue == null ? "" : propertyValue.getValue();
+                setChildValue(property, "value", appendCommaSeparated(existingValue, value));
                 return;
             }
         }
@@ -195,6 +197,18 @@ final class MavenTestInstrumentation {
         setChildValue(property, "name", name);
         setChildValue(property, "value", value);
         properties.addChild(property);
+    }
+
+    private static String appendCommaSeparated(String existingValue, String value) {
+        if (existingValue == null || existingValue.isBlank()) {
+            return value;
+        }
+        for (String existing : existingValue.split(",")) {
+            if (value.equals(existing.trim())) {
+                return existingValue;
+            }
+        }
+        return existingValue + "," + value;
     }
 
     private static void setUserProperties(Properties userProperties, TestSleuthRunContext runContext) {

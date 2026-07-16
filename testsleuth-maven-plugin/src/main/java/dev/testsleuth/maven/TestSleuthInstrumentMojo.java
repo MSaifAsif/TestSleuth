@@ -48,9 +48,9 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         new MavenBuildTiming().start(outputDirectory);
 
         if (result.dependencyAdded()) {
-            getLog().info("Added testsleuth-junit5 to the test runtime classpath");
+            getLog().info("Added TestSleuth JUnit listener modules to the test runtime classpath");
         } else {
-            getLog().debug("testsleuth-junit5 is already present in project dependencies");
+            getLog().debug("TestSleuth JUnit listener modules are already present in project dependencies");
         }
         getLog().info("Configured JUnit 5 lifecycle event output at " + result.junit5EventsFile());
         getLog().info("Configured JUnit 4 lifecycle event output at " + result.junit4EventsFile());

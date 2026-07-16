@@ -70,7 +70,7 @@ final class TestSleuthEventJsonMergerTest {
                 """);
         Files.writeString(second, """
                 [
-                  {"id":"second","attributes":{"collector":"maven-test-report"}}
+                  {"id":"second","attributes":{"collector":"junit4-listener"}}
                 ]
                 """);
 
@@ -81,6 +81,7 @@ final class TestSleuthEventJsonMergerTest {
         assertTrue(merged.json().contains("\"id\":\"first\""));
         assertTrue(merged.json().contains("\"id\":\"second\""));
         assertEquals(1, merger.countAttributeValue(merged.json(), "collector", "junit5-listener"));
+        assertEquals(1, merger.countAttributeValue(merged.json(), "collector", "junit4-listener"));
     }
 
     @Test

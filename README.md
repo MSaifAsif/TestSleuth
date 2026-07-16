@@ -39,10 +39,12 @@ Collectors emit normalized facts. Detectors consume those facts later and produc
 Current modules:
 
 - `testsleuth-core`: framework-neutral event, finding, detector, and JSON model.
+- `testsleuth-junit4`: JUnit 4 RunListener lifecycle collector.
 - `testsleuth-junit5`: JUnit Platform lifecycle listener.
 - `testsleuth-report`: HTML report renderer.
 - `testsleuth-maven-plugin`: Maven instrumentation, report generation, aggregation, CI logs, and machine-readable output.
 - `testsleuth-samples/slow-junit5-maven`: intentionally slow Maven/JUnit 5 sample.
+- `testsleuth-samples/slow-junit4-maven`: intentionally slow pure Maven/JUnit 4 sample.
 
 Planned Maven-first expansion areas:
 
@@ -83,6 +85,14 @@ mvn -pl testsleuth-samples/slow-junit5-maven verify
 The sample produces default slow-test findings without lowering the `1000ms` threshold,
 and includes fixed-wait, setup-heavy, legacy JUnit 4, and Spring-style framework initialization examples.
 
+The repository also includes a pure Maven/JUnit 4 sample that exercises the legacy Surefire JUnit 4 provider and TestSleuth's JUnit 4 `RunListener` path:
+
+```bash
+mvn -pl testsleuth-samples/slow-junit4-maven verify
+```
+
+This sample writes `target/testsleuth/junit4-events.json` and merges those lifecycle events into `target/testsleuth/events.json`.
+
 ### Maven Report Configuration
 
 The report goal is configurable with Maven properties:
@@ -118,9 +128,11 @@ Current options:
 
 The `testsleuth-junit5` module provides a JUnit Platform `TestExecutionListener` and a JUnit Jupiter extension. When it is present on the test runtime classpath and the `testsleuth.junit.events.file` system property is set, it writes JUnit lifecycle events to that JSON file. The Maven instrumentation goal enables listener and Jupiter extension autodetection so per-test setup and teardown phase events are captured when JUnit Jupiter is present.
 
-The `testsleuth-junit4` module provides a JUnit 4 `RunListener` for legacy Surefire/Failsafe JUnit 4 provider runs. Maven instrumentation injects this listener automatically and writes JUnit 4 lifecycle events to `target/testsleuth/junit4-events.json`, which is merged into the normal `events.json` report output. Mixed JUnit 4/JUnit 5 suites that run JUnit 4 tests through the JUnit Vintage engine are still visible through Maven XML and JUnit Platform events.
+The `testsleuth-junit4` module provides a JUnit 4 `RunListener` for legacy Surefire/Failsafe JUnit 4 provider runs. When configured, this listener writes JUnit 4 lifecycle events to `target/testsleuth/junit4-events.json`, which is merged into the normal `events.json` report output. Mixed JUnit 4/JUnit 5 suites that run JUnit 4 tests through the JUnit Vintage engine are still visible through Maven XML and JUnit Platform events.
 
-The Maven `testsleuth:instrument` goal adds the listener dependency and sets the required JUnit Platform properties for the current Maven session.
+Pure legacy JUnit 4 provider runs also require Surefire/Failsafe `properties.listener` configuration because that provider setting is not exposed as a Maven user property. The pure JUnit 4 sample shows the required static configuration while TestSleuth supplies the listener dependency and event output property.
+
+The Maven `testsleuth:instrument` goal adds the listener dependencies and sets the required JUnit Platform and TestSleuth event-output properties for the current Maven session.
 
 ## License
 
@@ -135,6 +147,7 @@ testsleuth-junit5
 testsleuth-report
 testsleuth-maven-plugin
 testsleuth-samples/slow-junit5-maven
+testsleuth-samples/slow-junit4-maven
 docs
 ```
 

@@ -26,18 +26,19 @@ final class MavenTimingSummaryTest {
                         event("maven-2", "maven-test-report", 300),
                         event("junit-1", "junit5-listener", 650),
                         event("junit-2", "junit5-listener", 250),
+                        event("junit4-1", "junit4-listener", 125),
                         event("setup-1", EventKind.SETUP_FINISHED, "junit5-listener", 40),
                         event("teardown-1", EventKind.TEARDOWN_FINISHED, "junit5-listener", 25)
                 )
         );
 
         assertEquals(1_000, summary.mavenReportedTestTime().toMillis());
-        assertEquals(900, summary.junitObservedTestTime().toMillis());
+        assertEquals(1_025, summary.junitObservedTestTime().toMillis());
         assertEquals(40, summary.junitSetupTime().toMillis());
         assertEquals(25, summary.junitTeardownTime().toMillis());
         assertEquals(1_000, summary.unaccountedLifecycleTime().orElseThrow().toMillis());
         assertEquals(
-                "[TestSleuth] Timing: Maven tests 1000 ms, JUnit observed 900 ms, setup 40 ms, teardown 25 ms, lifecycle remainder 1000 ms",
+                "[TestSleuth] Timing: Maven tests 1000 ms, JUnit observed 1025 ms, setup 40 ms, teardown 25 ms, lifecycle remainder 1000 ms",
                 summary.consoleLine()
         );
     }

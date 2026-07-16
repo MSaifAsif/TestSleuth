@@ -30,7 +30,8 @@ record MavenTimingSummary(
         Objects.requireNonNull(events, "events");
 
         Duration mavenReportedTestTime = totalFinishedDuration(events, "maven-test-report");
-        Duration junitObservedTestTime = totalFinishedDuration(events, "junit5-listener");
+        Duration junitObservedTestTime = totalFinishedDuration(events, "junit5-listener")
+                .plus(totalFinishedDuration(events, "junit4-listener"));
         Duration junitSetupTime = totalDuration(events, EventKind.SETUP_FINISHED, "junit5-listener");
         Duration junitTeardownTime = totalDuration(events, EventKind.TEARDOWN_FINISHED, "junit5-listener");
         Optional<Duration> unaccountedLifecycleTime = lifecycleWindow

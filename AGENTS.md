@@ -38,6 +38,7 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 - JUnit 4 instrumentation includes a RunListener and `junit4-events.json` merge path.
 - Slow JUnit 5 Maven sample includes Spring-style framework initialization scenarios without external Spring dependencies.
 - Slow Maven sample includes a legacy JUnit 4 test through the Vintage engine.
+- Pure JUnit 4 Maven sample validates the legacy Surefire JUnit 4 provider and `junit4-listener` path. It declares Surefire `properties.listener` statically because the legacy provider does not expose that setting as a Maven user property.
 - Slow JUnit 5 Maven sample bound into the normal Maven lifecycle.
 
 ## Important Commands
@@ -52,6 +53,12 @@ Run the sample through normal Maven lifecycle:
 
 ```bash
 mvn -pl testsleuth-samples/slow-junit5-maven verify
+```
+
+Run the pure JUnit 4 sample through normal Maven lifecycle:
+
+```bash
+mvn -pl testsleuth-samples/slow-junit4-maven verify
 ```
 
 Run the sample with fixed-wait source detection and detailed logs:
@@ -80,6 +87,7 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 - `testsleuth-report`: HTML report renderer.
 - `testsleuth-maven-plugin`: Maven instrumentation, report generation, aggregation, console output, and Maven-specific detectors.
 - `testsleuth-samples/slow-junit5-maven`: intentionally slow Maven/JUnit 5 sample.
+- `testsleuth-samples/slow-junit4-maven`: intentionally slow pure Maven/JUnit 4 sample.
 - `README.md`: current architecture, usage, and repository overview.
 - `CHANGELOG.md`: notable user-visible changes.
 - `docs/adr/`: architecture decision records.
@@ -99,10 +107,9 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 
 ## Current Next Steps
 
-1. Validate JUnit 4 auto-injection against a pure JUnit 4 Maven sample or external project.
-2. Add richer source detectors for polling libraries and framework-specific waits.
-3. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
-4. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
+1. Add richer source detectors for polling libraries and framework-specific waits.
+2. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
+3. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
 
 ## Verification Expectations
 

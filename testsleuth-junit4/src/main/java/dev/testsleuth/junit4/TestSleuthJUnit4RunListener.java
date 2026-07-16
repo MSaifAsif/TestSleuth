@@ -33,6 +33,16 @@ public final class TestSleuthJUnit4RunListener extends RunListener {
     }
 
     @Override
+    public void testAssumptionFailure(Failure failure) {
+        collector.recordAssumptionFailure(failure);
+    }
+
+    @Override
+    public void testIgnored(Description description) {
+        collector.recordIgnored(description);
+    }
+
+    @Override
     public void testFinished(Description description) {
         collector.recordFinished(description);
     }
