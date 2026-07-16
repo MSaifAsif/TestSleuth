@@ -11,7 +11,7 @@ The project is currently in the Maven measurement foundation phase. The immediat
 - Core event and finding model.
 - Basic report rendering module.
 - Maven plugin goals for instrumentation, reporting, and aggregation.
-- Architecture decision records under `docs/adr`.
+- Architecture decision records under `docs/adr`, including the runtime wait event direction.
 
 ## Build
 
@@ -83,7 +83,8 @@ mvn -pl testsleuth-samples/slow-junit5-maven verify
 ```
 
 The sample produces default slow-test findings without lowering the `1000ms` threshold,
-and includes fixed-wait, setup-heavy, legacy JUnit 4, and Spring-style framework initialization examples.
+and includes fixed-wait, polling-wait, JDK timed wait, setup-heavy, Failsafe integration-test,
+legacy JUnit 4, and Spring-style framework initialization examples.
 
 The repository also includes a pure Maven/JUnit 4 sample that exercises the legacy Surefire JUnit 4 provider and TestSleuth's JUnit 4 `RunListener` path:
 
@@ -107,6 +108,8 @@ mvn testsleuth:instrument test testsleuth:report \
   -Dtestsleuth.detectors.fixedWaits=false \
   -Dtestsleuth.detectors.pollingWaits=false \
   -Dtestsleuth.detectors.frameworkInitialization=false \
+  -Dtestsleuth.runtime.waits=false \
+  -Dtestsleuth.runtime.waitStacks=false \
   -Dtestsleuth.console.detail=summary
 ```
 
@@ -116,13 +119,15 @@ Current options:
 - `testsleuth.console.detail`: `quiet`, `summary`, or `findings`; default is `summary`. `findings` adds one compact log line per finding with module, fork, and collector context when available.
 - `testsleuth.threshold.slowTestMillis`: minimum duration for slow-test findings; default is `1000`.
 - `testsleuth.threshold.verySlowTestMillis`: threshold for high-severity slow-test findings; default is `5000`.
-- `testsleuth.threshold.fixedWaitMillis`: minimum direct `Thread.sleep(...)` duration for fixed-wait source findings; default is `250`.
-- `testsleuth.threshold.pollingWaitMillis`: minimum direct `Thread.sleep(...)` duration inside a nearby loop for polling-wait source findings; default is `100`.
+- `testsleuth.threshold.fixedWaitMillis`: minimum direct `Thread.sleep(...)` or JDK timed wait duration for fixed-wait source findings; default is `250`.
+- `testsleuth.threshold.pollingWaitMillis`: minimum direct `Thread.sleep(...)` or JDK timed wait duration inside a nearby loop for polling-wait source findings; default is `100`.
 - `testsleuth.findings.max`: maximum timing findings to show; default is `10`.
 - `testsleuth.detectors.slowTests`: enables the current slow-test detector; default is `true`.
-- `testsleuth.detectors.fixedWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls; default is `false`.
-- `testsleuth.detectors.pollingWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls inside nearby loops; default is `false`.
+- `testsleuth.detectors.fixedWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls and JDK timed waits such as `await(timeout, TimeUnit...)`, `tryAcquire(timeout, TimeUnit...)`, `Future.get(timeout, TimeUnit...)`, and `orTimeout(timeout, TimeUnit...)`; default is `false`.
+- `testsleuth.detectors.pollingWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls and JDK timed waits inside nearby loops; default is `false`.
 - `testsleuth.detectors.frameworkInitialization`: enables opt-in source and timing correlation for framework/application-context initialization candidates; default is `false`.
+- `testsleuth.runtime.waits`: reserved opt-in switch for future runtime wait collection; default is `false`.
+- `testsleuth.runtime.waitStacks`: reserved opt-in switch for future runtime wait stack evidence; default is `false`.
 
 ## Current JUnit 5 Listener
 

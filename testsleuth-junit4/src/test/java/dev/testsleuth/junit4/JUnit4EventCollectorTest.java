@@ -1,6 +1,7 @@
 package dev.testsleuth.junit4;
 
 import dev.testsleuth.core.event.EventKind;
+import dev.testsleuth.core.event.EventJsonReader;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import org.junit.AssumptionViolatedException;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,33 @@ final class JUnit4EventCollectorTest {
         String json = Files.readString(eventsFile);
         assertTrue(json.contains("\"collector\":\"junit4-listener\""));
         assertTrue(json.contains("\"kind\":\"TEST_FINISHED\""));
+    }
+
+    @Test
+    void preservesExistingEventsWhenWritingToConfiguredFile() throws Exception {
+        Path eventsFile = tempDir.resolve("events/junit4-events.json");
+        JUnit4EventCollector first = new JUnit4EventCollector();
+        Description firstDescription = Description.createTestDescription(ExampleTest.class, "firstTest");
+        first.recordStarted(firstDescription);
+        first.recordFinished(firstDescription);
+        first.writeTo(eventsFile, message -> {
+            throw new AssertionError(message);
+        });
+
+        JUnit4EventCollector second = new JUnit4EventCollector();
+        Description secondDescription = Description.createTestDescription(ExampleTest.class, "secondTest");
+        second.recordStarted(secondDescription);
+        second.recordFinished(secondDescription);
+        second.writeTo(eventsFile, message -> {
+            throw new AssertionError(message);
+        });
+
+        List<TestSleuthEvent> events = new EventJsonReader().read(Files.readString(eventsFile));
+        assertEquals(4, events.size());
+        assertEquals("dev.testsleuth.junit4.JUnit4EventCollectorTest$ExampleTest.firstTest",
+                events.get(1).attributes().get("testIdentity"));
+        assertEquals("dev.testsleuth.junit4.JUnit4EventCollectorTest$ExampleTest.secondTest",
+                events.get(3).attributes().get("testIdentity"));
     }
 
     @Test

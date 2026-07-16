@@ -37,13 +37,13 @@ final class MavenFixedWaitFindingsTest {
         List<Finding> findings = new MavenFixedWaitFindings(config, runContext())
                 .detect(List.of(tempDir.toString()));
 
-        assertEquals(2, findings.size());
+        assertEquals(4, findings.size());
         Finding largest = findings.get(0);
-        assertEquals("Fixed wait in test source: ExampleTest.java:6", largest.title());
+        assertEquals("Fixed wait in test source: ExampleTest.java:12", largest.title());
         assertEquals(FindingCategory.WAITING, largest.category());
         assertEquals(FindingSeverity.HIGH, largest.severity());
-        assertEquals(1_100, largest.observedCost().toMillis());
-        assertEquals("Thread.sleep(1100 ms) at ExampleTest.java:6.", largest.evidence().get(0));
+        assertEquals(2_000, largest.observedCost().toMillis());
+        assertEquals("await(timeout) waited up to 2000 ms at ExampleTest.java:12.", largest.evidence().get(0));
         assertEquals("Detector: fixed-waits-source.", largest.evidence().get(1));
         assertEquals("Module: dev.testsleuth:sample.", largest.evidence().get(2));
     }
@@ -59,6 +59,12 @@ final class MavenFixedWaitFindingsTest {
                     }
                     void mediumWait() throws Exception {
                         Thread.sleep(325L);
+                    }
+                    void latchWait(java.util.concurrent.CountDownLatch latch) throws Exception {
+                        latch.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                    }
+                    void futureWait(java.util.concurrent.Future<String> future) throws Exception {
+                        future.get(750, java.util.concurrent.TimeUnit.MILLISECONDS);
                     }
                     void commentOnly() {
                         // Thread.sleep(9000);

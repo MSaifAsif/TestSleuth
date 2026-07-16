@@ -1,6 +1,7 @@
 package dev.testsleuth.junit5;
 
 import dev.testsleuth.core.event.EventKind;
+import dev.testsleuth.core.event.EventJsonReader;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -108,6 +109,29 @@ final class JUnitLifecycleEventCollectorTest {
         String json = Files.readString(eventsFile);
         assertTrue(json.contains("\"collector\":\"junit5-listener\""));
         assertTrue(json.contains("\"kind\":\"TEST_FINISHED\""));
+    }
+
+    @Test
+    void preservesExistingEventsWhenWritingToConfiguredFile() throws Exception {
+        Path eventsFile = tempDir.resolve("events/junit-events.json");
+        JUnitLifecycleEventCollector first = new JUnitLifecycleEventCollector();
+        first.recordStarted(testIdentifier("first-id", "firstTest"));
+        first.recordFinished(testIdentifier("first-id", "firstTest"), TestExecutionResult.successful());
+        first.writeTo(eventsFile, message -> {
+            throw new AssertionError(message);
+        });
+
+        JUnitLifecycleEventCollector second = new JUnitLifecycleEventCollector();
+        second.recordStarted(testIdentifier("second-id", "secondTest"));
+        second.recordFinished(testIdentifier("second-id", "secondTest"), TestExecutionResult.successful());
+        second.writeTo(eventsFile, message -> {
+            throw new AssertionError(message);
+        });
+
+        List<TestSleuthEvent> events = new EventJsonReader().read(Files.readString(eventsFile));
+        assertEquals(4, events.size());
+        assertEquals("dev.testsleuth.ExampleTest.firstTest", events.get(1).attributes().get("testIdentity"));
+        assertEquals("dev.testsleuth.ExampleTest.secondTest", events.get(3).attributes().get("testIdentity"));
     }
 
     private static TestIdentifier testIdentifier(String uniqueId, String displayName) {

@@ -62,6 +62,12 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.detectors.frameworkInitialization", defaultValue = "false")
     private boolean frameworkInitializationDetectorEnabled;
 
+    @Parameter(property = "testsleuth.runtime.waits", defaultValue = "false")
+    private boolean runtimeWaitsEnabled;
+
+    @Parameter(property = "testsleuth.runtime.waitStacks", defaultValue = "false")
+    private boolean runtimeWaitStacksEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
         long reportStartedNanos = System.nanoTime();
@@ -71,56 +77,33 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
         Path events = output.resolve("events.json");
         Path findingsFile = output.resolve("findings.json");
 
-        List<Path> moduleEventFiles = new ArrayList<>();
-        List<TestSleuthEvent> scannedEvents = new ArrayList<>();
-        List<TestSleuthEvent> fallbackEvents = new ArrayList<>();
-        List<TestSleuthEvent> detectorEvents = new ArrayList<>();
-        List<java.time.Duration> moduleLifecycleWindows = new ArrayList<>();
+        List<MavenAggregateEventCollector.ModuleInput> modules = new ArrayList<>();
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
 
         for (MavenProject reactorProject : session.getProjects()) {
             Path moduleOutput = moduleOutputDirectory(reactorProject);
-            Path moduleEvents = moduleOutput.resolve("events.json");
-            Path moduleJunit5Events = moduleOutput.resolve("junit-events.json");
-            Path moduleJunit4Events = moduleOutput.resolve("junit4-events.json");
-            MavenTestReportScanner.ScanResult moduleScanResult;
-            if (Files.isRegularFile(moduleEvents)) {
-                moduleEventFiles.add(moduleEvents);
-                detectorEvents.addAll(merger.readEvents(moduleEvents));
-            } else {
-                if (Files.isRegularFile(moduleJunit5Events)) {
-                    moduleEventFiles.add(moduleJunit5Events);
-                    detectorEvents.addAll(merger.readEvents(moduleJunit5Events));
-                }
-                if (Files.isRegularFile(moduleJunit4Events)) {
-                    moduleEventFiles.add(moduleJunit4Events);
-                    detectorEvents.addAll(merger.readEvents(moduleJunit4Events));
-                }
-            }
-
             TestSleuthRunContext runContext = runContextFactory.loadOrCreate(
                     moduleOutput,
                     reactorProject,
                     session.getUserProperties()
             );
-            new MavenBuildTiming().load(moduleOutput)
-                    .map(MavenBuildTiming.RunTiming::elapsedSinceStart)
-                    .ifPresent(moduleLifecycleWindows::add);
-            moduleScanResult = scanTestReports(reactorProject, runContext);
-            scannedEvents.addAll(moduleScanResult.events());
-            if (!Files.isRegularFile(moduleEvents)) {
-                fallbackEvents.addAll(moduleScanResult.events());
-                detectorEvents.addAll(moduleScanResult.events());
-            }
+            modules.add(new MavenAggregateEventCollector.ModuleInput(
+                    moduleOutput,
+                    reportDirectories(reactorProject),
+                    runContext
+            ));
         }
 
-        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(moduleEventFiles, fallbackEvents);
-        int junitLifecycleEvents = merger.countAttributeValue(mergedEvents.json(), "collector", "junit5-listener")
-                + merger.countAttributeValue(mergedEvents.json(), "collector", "junit4-listener");
-        MavenTestReportScanner.ScanResult scanResult = new MavenTestReportScanner.ScanResult(scannedEvents);
-        MavenTimingSummary timingSummary = MavenTimingSummary.from(aggregateLifecycleWindow(moduleLifecycleWindows), detectorEvents);
-        List<Finding> findings = detectFindings(config, detectorEvents);
+        MavenAggregateEventCollector.AggregateEvents aggregateEvents = new MavenAggregateEventCollector().collect(modules);
+        int junitLifecycleEvents = merger.countAttributeValue(aggregateEvents.mergedEvents().json(), "collector", "junit5-listener")
+                + merger.countAttributeValue(aggregateEvents.mergedEvents().json(), "collector", "junit4-listener");
+        MavenTestReportScanner.ScanResult scanResult = new MavenTestReportScanner.ScanResult(aggregateEvents.scannedEvents());
+        MavenTimingSummary timingSummary = MavenTimingSummary.from(
+                aggregateLifecycleWindow(aggregateEvents.moduleLifecycleWindows()),
+                aggregateEvents.detectorEvents()
+        );
+        List<Finding> findings = detectFindings(config, aggregateEvents.detectorEvents());
         java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
 
         ReportModel model = new ReportModel(
@@ -128,7 +111,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                 "Aggregated " + session.getProjects().size() + " Maven projects, "
                         + scanResult.testCount() + " Maven test results, and "
                         + junitLifecycleEvents + " JUnit lifecycle events. "
-                        + aggregateLifecycleSummary(moduleLifecycleWindows)
+                        + aggregateLifecycleSummary(aggregateEvents.moduleLifecycleWindows())
                         + timingSummary.reportSentence()
                         + reportOverheadSummary(reportPreparationTime)
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
@@ -137,7 +120,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
 
         try {
             Files.createDirectories(output);
-            Files.writeString(events, mergedEvents.json(), StandardCharsets.UTF_8);
+            Files.writeString(events, aggregateEvents.mergedEvents().json(), StandardCharsets.UTF_8);
             Files.writeString(findingsFile, new FindingJsonWriter().write(findings), StandardCharsets.UTF_8);
             Files.writeString(report, new HtmlReportRenderer().render(model), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -172,20 +155,19 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                     fixedWaitMillis,
                     pollingWaitsDetectorEnabled,
                     pollingWaitMillis,
-                    frameworkInitializationDetectorEnabled
+                    frameworkInitializationDetectorEnabled,
+                    runtimeWaitsEnabled,
+                    runtimeWaitStacksEnabled
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);
         }
     }
 
-    private MavenTestReportScanner.ScanResult scanTestReports(
-            MavenProject reactorProject,
-            TestSleuthRunContext runContext
-    ) throws MojoExecutionException {
+    private List<MavenTestReportScanner.ReportDirectory> reportDirectories(MavenProject reactorProject)
+            throws MojoExecutionException {
         Path buildDirectory = buildDirectory(reactorProject);
-        return new MavenTestReportScanner(runContext)
-                .scanReportDirectories(new MavenTestRunnerContext().reportDirectories(reactorProject, buildDirectory));
+        return new MavenTestRunnerContext().reportDirectories(reactorProject, buildDirectory);
     }
 
     private List<Finding> detectFindings(TestSleuthMavenConfig config, List<TestSleuthEvent> events)

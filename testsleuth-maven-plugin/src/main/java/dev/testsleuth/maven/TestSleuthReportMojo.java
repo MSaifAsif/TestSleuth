@@ -65,6 +65,12 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.detectors.frameworkInitialization", defaultValue = "false")
     private boolean frameworkInitializationDetectorEnabled;
 
+    @Parameter(property = "testsleuth.runtime.waits", defaultValue = "false")
+    private boolean runtimeWaitsEnabled;
+
+    @Parameter(property = "testsleuth.runtime.waitStacks", defaultValue = "false")
+    private boolean runtimeWaitStacksEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
         long reportStartedNanos = System.nanoTime();
@@ -143,7 +149,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                     fixedWaitMillis,
                     pollingWaitsDetectorEnabled,
                     pollingWaitMillis,
-                    frameworkInitializationDetectorEnabled
+                    frameworkInitializationDetectorEnabled,
+                    runtimeWaitsEnabled,
+                    runtimeWaitStacksEnabled
             );
         } catch (IllegalArgumentException e) {
             throw new MojoExecutionException("Invalid TestSleuth configuration: " + e.getMessage(), e);

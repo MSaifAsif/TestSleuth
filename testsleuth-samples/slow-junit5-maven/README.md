@@ -2,7 +2,8 @@
 
 This sample contains intentionally slow tests for validating TestSleuth behavior.
 It covers direct slow tests, fixed waits, repeated polling-style delays, setup-heavy tests,
-legacy JUnit 4 tests, and Spring-style framework initialization patterns without requiring Spring dependencies.
+Failsafe integration-test execution, legacy JUnit 4 tests, and Spring-style framework initialization patterns
+without requiring Spring dependencies.
 
 Run the sample with TestSleuth:
 
@@ -10,8 +11,9 @@ Run the sample with TestSleuth:
 mvn -pl testsleuth-samples/slow-junit5-maven verify
 ```
 
-The default slow-test threshold is `1000ms`, so `slowExternalCallSimulation` and
-`fixedSleepWaitingForExternalSignal` should produce visible findings without lowering thresholds.
+The default slow-test threshold is `1000ms`, so `slowExternalCallSimulation`,
+`slowIntegrationBoundarySimulation`, and `fixedSleepWaitingForExternalSignal` should produce visible findings
+without lowering thresholds.
 
 Enable source scanning for direct fixed waits and repeated polling-style delays with:
 

@@ -51,4 +51,24 @@ final class TestSleuthMavenConfigTest {
 
         assertEquals(false, config.frameworkInitializationDetectorEnabled());
     }
+
+    @Test
+    void disablesRuntimeWaitCollectionByDefault() {
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(
+                true, "summary", 1_000, 5_000, 10, true, false, 250, false, 100, false
+        );
+
+        assertEquals(false, config.runtimeWaitsEnabled());
+        assertEquals(false, config.runtimeWaitStacksEnabled());
+    }
+
+    @Test
+    void parsesRuntimeWaitCollectionFlags() {
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(
+                true, "summary", 1_000, 5_000, 10, true, false, 250, false, 100, false, true, true
+        );
+
+        assertEquals(true, config.runtimeWaitsEnabled());
+        assertEquals(true, config.runtimeWaitStacksEnabled());
+    }
 }

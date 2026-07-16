@@ -41,13 +41,14 @@ final class MavenPollingWaitFindingsTest {
         List<Finding> findings = new MavenPollingWaitFindings(config, runContext())
                 .detect(List.of(tempDir.toString()));
 
-        assertEquals(1, findings.size());
+        assertEquals(2, findings.size());
         Finding finding = findings.get(0);
-        assertEquals("Polling wait in test source: ExampleTest.java:4", finding.title());
+        assertEquals("Polling wait in test source: ExampleTest.java:11", finding.title());
         assertEquals(FindingCategory.WAITING, finding.category());
         assertEquals(FindingSeverity.MEDIUM, finding.severity());
-        assertEquals(125, finding.observedCost().toMillis());
-        assertEquals("Thread.sleep(125 ms) inside a nearby loop at ExampleTest.java:4.", finding.evidence().get(0));
+        assertEquals(250, finding.observedCost().toMillis());
+        assertEquals("tryAcquire(timeout) waited up to 250 ms inside a nearby loop at ExampleTest.java:11.",
+                finding.evidence().get(0));
         assertEquals("Detector: polling-waits-source.", finding.evidence().get(1));
     }
 
@@ -61,6 +62,11 @@ final class MavenPollingWaitFindingsTest {
                     }
                     void nonPollingWait() throws Exception {
                         Thread.sleep(325);
+                    }
+                    void pollsSemaphore(java.util.concurrent.Semaphore semaphore) throws Exception {
+                        while (!semaphore.tryAcquire(250, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                            // keep polling
+                        }
                     }
                 }
                 """);

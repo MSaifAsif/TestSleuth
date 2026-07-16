@@ -11,6 +11,5 @@ out/
 *.log
 *.tmp
 
+# Local planning notes and working roadmaps.
 project-management/
-
-./project-management/

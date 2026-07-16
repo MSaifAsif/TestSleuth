@@ -74,6 +74,45 @@ final class MavenTestReportScannerTest {
         assertEquals(reports.toString(), event.attributes().get("reportDirectory"));
     }
 
+    @Test
+    void scansSurefireAndFailsafeReportDirectoriesTogether() throws IOException {
+        Path surefireReports = tempDir.resolve("surefire-reports");
+        Path failsafeReports = tempDir.resolve("failsafe-reports");
+        Files.createDirectories(surefireReports);
+        Files.createDirectories(failsafeReports);
+        Files.writeString(surefireReports.resolve("TEST-dev.testsleuth.UnitTest.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <testsuite tests="1" failures="0" errors="0" skipped="0">
+                  <testcase classname="dev.testsleuth.UnitTest" name="unitPasses" time="0.100"/>
+                </testsuite>
+                """);
+        Files.writeString(failsafeReports.resolve("TEST-dev.testsleuth.IntegrationIT.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <testsuite tests="1" failures="0" errors="0" skipped="0">
+                  <testcase classname="dev.testsleuth.IntegrationIT" name="integrationPasses" time="0.200"/>
+                </testsuite>
+                """);
+
+        MavenTestReportScanner.ScanResult result = new MavenTestReportScanner(runContext())
+                .scanReportDirectories(List.of(
+                        new MavenTestReportScanner.ReportDirectory(
+                                surefireReports,
+                                java.util.Map.of("testRunner", "surefire")
+                        ),
+                        new MavenTestReportScanner.ReportDirectory(
+                                failsafeReports,
+                                java.util.Map.of("testRunner", "failsafe")
+                        )
+                ));
+
+        assertEquals(2, result.testCount());
+        assertEquals("dev.testsleuth.UnitTest.unitPasses", result.events().get(0).attributes().get("testIdentity"));
+        assertEquals("surefire", result.events().get(0).attributes().get("testRunner"));
+        assertEquals("dev.testsleuth.IntegrationIT.integrationPasses",
+                result.events().get(1).attributes().get("testIdentity"));
+        assertEquals("failsafe", result.events().get(1).attributes().get("testRunner"));
+    }
+
     private static TestSleuthRunContext runContext() {
         return new TestSleuthRunContext(
                 "run-1",

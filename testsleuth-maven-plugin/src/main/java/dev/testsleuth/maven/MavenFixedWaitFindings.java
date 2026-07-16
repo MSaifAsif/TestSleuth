@@ -8,21 +8,12 @@ import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
 import dev.testsleuth.core.finding.TimeSavingEstimate;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 final class MavenFixedWaitFindings {
-    private static final Pattern THREAD_SLEEP = Pattern.compile("Thread\\.sleep\\(\\s*([0-9][0-9_]*)(?:[lL])?\\s*\\)");
-
     private final TestSleuthMavenConfig config;
     private final TestSleuthRunContext runContext;
 
@@ -37,56 +28,17 @@ final class MavenFixedWaitFindings {
             return List.of();
         }
 
-        return testSourceRoots.stream()
-                .filter(root -> root != null && !root.isBlank())
-                .map(Path::of)
-                .filter(Files::isDirectory)
-                .flatMap(this::scanRoot)
+        return new MavenSourceWaitScanner().scanRoots(testSourceRoots)
                 .filter(wait -> wait.duration().compareTo(config.fixedWaitThreshold()) >= 0)
-                .sorted(Comparator.comparing(FixedWait::duration).reversed()
+                .sorted(Comparator.comparing(MavenSourceWaitScanner.SourceWait::duration).reversed()
                         .thenComparing(wait -> wait.source().toString())
-                        .thenComparing(FixedWait::lineNumber))
+                        .thenComparing(MavenSourceWaitScanner.SourceWait::lineNumber))
                 .limit(config.maxFindings())
                 .map(this::toFinding)
                 .toList();
     }
 
-    private Stream<FixedWait> scanRoot(Path root) {
-        try {
-            return Files.walk(root)
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".java"))
-                    .flatMap(path -> scanFile(root, path).stream());
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to scan test source root " + root, e);
-        }
-    }
-
-    private List<FixedWait> scanFile(Path root, Path source) {
-        try {
-            List<String> lines = Files.readAllLines(source, StandardCharsets.UTF_8);
-            java.util.ArrayList<FixedWait> waits = new java.util.ArrayList<>();
-            for (int index = 0; index < lines.size(); index++) {
-                String line = lines.get(index);
-                if (line.stripLeading().startsWith("//")) {
-                    continue;
-                }
-                Matcher matcher = THREAD_SLEEP.matcher(line);
-                while (matcher.find()) {
-                    waits.add(new FixedWait(
-                            root.relativize(source),
-                            index + 1,
-                            Duration.ofMillis(parseMillis(matcher.group(1)))
-                    ));
-                }
-            }
-            return waits;
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to scan test source file " + source, e);
-        }
-    }
-
-    private Finding toFinding(FixedWait wait) {
+    private Finding toFinding(MavenSourceWaitScanner.SourceWait wait) {
         String location = wait.source() + ":" + wait.lineNumber();
         return new Finding(
                 new FindingId("fixed-wait:" + sanitize(runContext.moduleId()) + ":" + sanitize(location)),
@@ -98,7 +50,7 @@ final class MavenFixedWaitFindings {
                 new TimeSavingEstimate(Duration.ZERO, wait.duration()),
                 List.of(location),
                 List.of(
-                        "Thread.sleep(" + wait.duration().toMillis() + " ms) at " + location + ".",
+                        wait.expression() + " waited up to " + wait.duration().toMillis() + " ms at " + location + ".",
                         "Detector: fixed-waits-source.",
                         "Module: " + runContext.moduleId() + ".",
                         "Build run: " + runContext.buildRunId() + ".",
@@ -122,14 +74,7 @@ final class MavenFixedWaitFindings {
         return FindingSeverity.MEDIUM;
     }
 
-    private static long parseMillis(String literal) {
-        return Long.parseLong(literal.replace("_", ""));
-    }
-
     private static String sanitize(String value) {
         return value.replaceAll("[^A-Za-z0-9._:-]", "_");
-    }
-
-    private record FixedWait(Path source, int lineNumber, Duration duration) {
     }
 }

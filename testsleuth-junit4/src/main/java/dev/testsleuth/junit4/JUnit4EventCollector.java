@@ -1,6 +1,7 @@
 package dev.testsleuth.junit4;
 
 import dev.testsleuth.core.event.EventId;
+import dev.testsleuth.core.event.EventJsonReader;
 import dev.testsleuth.core.event.EventJsonWriter;
 import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.Subject;
@@ -113,10 +114,23 @@ final class JUnit4EventCollector {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            Files.writeString(eventsFile, new EventJsonWriter().write(events), StandardCharsets.UTF_8);
+            Files.writeString(eventsFile, new EventJsonWriter().write(mergedEvents(eventsFile)), StandardCharsets.UTF_8);
         } catch (IOException | RuntimeException e) {
             failureReporter.accept("Failed to write JUnit 4 lifecycle events to " + eventsFile + ": " + e.getMessage());
         }
+    }
+
+    private List<TestSleuthEvent> mergedEvents(Path eventsFile) throws IOException {
+        if (!Files.isRegularFile(eventsFile)) {
+            return events();
+        }
+
+        List<TestSleuthEvent> merged = new ArrayList<>(new EventJsonReader().read(Files.readString(
+                eventsFile,
+                StandardCharsets.UTF_8
+        )));
+        merged.addAll(events);
+        return List.copyOf(merged);
     }
 
     private TestSleuthEvent toEvent(EventKind kind, Description description, Map<String, String> attributes) {

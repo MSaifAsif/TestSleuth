@@ -33,6 +33,7 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         Path outputDirectory = Path.of(build.getDirectory()).resolve("testsleuth");
         Path junit5EventsFile = outputDirectory.resolve("junit-events.json");
         Path junit4EventsFile = outputDirectory.resolve("junit4-events.json");
+        new MavenTestSleuthRunFiles().reset(outputDirectory);
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthRunContext runContext = runContextFactory.create(project, session.getUserProperties());
         String instrumentationVersion = configuredVersion();
