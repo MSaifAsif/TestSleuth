@@ -36,6 +36,9 @@ final class ConsoleSummaryReporterTest {
                                 event("teardown", dev.testsleuth.core.event.EventKind.TEARDOWN_FINISHED, "junit5-listener", 50)
                         )
                 ),
+                MavenRuntimeWaitSummary.from(List.of(
+                        runtimeWaitEvent("runtime-wait", 250, 42)
+                )),
                 Duration.ofMillis(75),
                 List.of(finding()),
                 Path.of("target/testsleuth/index.html"),
@@ -58,9 +61,34 @@ final class ConsoleSummaryReporterTest {
                 "[TestSleuth] Report overhead: 75 ms"
         )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "[TestSleuth] Runtime waits: 1 events, 250 ms observed, collector overhead 42 ns"
+        )));
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] - MEDIUM Slow observed test: slowExample "
                         + "(1500 ms, module=dev.testsleuth:sample, fork=1, runner=surefire, collectors=junit5-listener, maven-test-report)"
         )));
+    }
+
+    private static dev.testsleuth.core.event.TestSleuthEvent runtimeWaitEvent(
+            String id,
+            long durationMillis,
+            long overheadNanos
+    ) {
+        return new dev.testsleuth.core.event.TestSleuthEvent(
+                new dev.testsleuth.core.event.EventId(id),
+                java.util.Optional.empty(),
+                dev.testsleuth.core.event.EventKind.WAIT_FINISHED,
+                new dev.testsleuth.core.event.Subject(dev.testsleuth.core.event.SubjectType.WAIT, "Thread.sleep"),
+                java.time.Instant.EPOCH,
+                0,
+                java.util.Map.of(
+                        "collector", dev.testsleuth.core.event.RuntimeWaitEventAttributes.COLLECTOR,
+                        dev.testsleuth.core.event.RuntimeWaitEventAttributes.OBSERVED_DURATION_MILLIS,
+                        Long.toString(durationMillis),
+                        dev.testsleuth.core.event.RuntimeWaitEventAttributes.COLLECTOR_OVERHEAD_NANOS,
+                        Long.toString(overheadNanos)
+                )
+        );
     }
 
     private static Finding finding() {

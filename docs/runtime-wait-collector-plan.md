@@ -13,6 +13,7 @@ Done:
   - `testsleuth.runtime.waitStacks`
 - Runtime wait module shell with normalized observation-to-event mapping and overhead attributes.
 - Runtime wait collector API that captures `Thread.sleep`, `Object.wait`, `LockSupport.parkNanos`, and `LockSupport.parkUntil` calls when invoked directly.
+- Maven opt-in classpath and event-file wiring for direct runtime wait collector use.
 
 ## Slice 2: Collector Prototype
 
@@ -37,13 +38,26 @@ The collector should write events with:
 
 ## Slice 3: Maven Opt-In Wiring
 
-When `testsleuth.runtime.waits=true`, Maven instrumentation should add the collector only to test JVMs. The default must stay disabled.
+Done:
+
+- When `testsleuth.runtime.waits=true`, Maven instrumentation adds the runtime wait collector to test JVM classpaths and exposes `testsleuth.runtime.waits.file`.
+- The default stays disabled.
+- Tests that import the direct collector API still need a normal test dependency on `testsleuth-runtime-wait` for compilation.
+
+Remaining:
+
+- Automatic JDK wait interception still needs an agent or equivalent test-JVM hook.
 
 When `testsleuth.runtime.waitStacks=true`, the collector may include stack evidence. Stack collection must remain separately opt-in because it has higher overhead and privacy impact.
 
 ## Slice 4: Detection and Reporting
 
-Runtime wait findings should merge with source wait findings rather than replace them.
+Done:
+
+- Runtime wait events produce Maven findings above the configured fixed-wait threshold when `testsleuth.runtime.waits=true`.
+- Runtime wait findings are additive and do not replace source wait findings.
+
+Remaining:
 
 The detector should distinguish:
 
@@ -54,6 +68,11 @@ The detector should distinguish:
 
 ## Slice 5: Overhead and Failure Behavior
 
-The collector must measure its own overhead and report it in the Maven console summary.
+Done:
+
+- Direct runtime wait events include per-event collector overhead.
+- Maven console summaries report runtime wait event count, observed wait time, and aggregate collector overhead when runtime wait events are present.
+
+Remaining:
 
 Collector failure should degrade to partial reports. It must not fail the user's test suite unless the user explicitly enables a future strict diagnostic mode.

@@ -21,6 +21,7 @@ final class MavenTestSleuthRunFilesTest {
         Files.writeString(output.resolve("findings.json"), "stale");
         Files.writeString(output.resolve("junit-events.json"), "stale");
         Files.writeString(output.resolve("junit4-events.json"), "stale");
+        Files.writeString(output.resolve("runtime-wait-events.json"), "stale");
         Files.writeString(output.resolve(MavenBuildTiming.TIMING_FILE_NAME), "keep");
 
         new MavenTestSleuthRunFiles().reset(output);
@@ -29,6 +30,7 @@ final class MavenTestSleuthRunFilesTest {
         assertFalse(Files.exists(output.resolve("findings.json")));
         assertFalse(Files.exists(output.resolve("junit-events.json")));
         assertFalse(Files.exists(output.resolve("junit4-events.json")));
+        assertFalse(Files.exists(output.resolve("runtime-wait-events.json")));
         assertTrue(Files.exists(output.resolve(MavenBuildTiming.TIMING_FILE_NAME)));
     }
 }

@@ -26,6 +26,8 @@ Runtime wait collection will emit normalized events into the shared TestSleuth e
 
 Runtime wait collection remains opt-in. Source wait detectors remain useful and should not be replaced. Detectors should merge runtime evidence with source evidence when identities or source locations can be correlated.
 
+Broader source detection for JDK timed waits can ship before automatic runtime interception. It provides low-cost evidence for configured waits while runtime collection matures behind opt-in configuration.
+
 Initial Maven configuration should use explicit properties, likely:
 
 - `testsleuth.runtime.waits`

@@ -102,6 +102,7 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 - Keep console output brief and useful for CI logs.
 - Update `CHANGELOG.md` for user-visible fixes, features, behavior changes, and notable docs changes.
 - Keep README aligned when architecture, usage, or repository layout changes.
+- End implementation handoffs with what changed in the current iteration, relevant diff/log excerpts, documentation updates, and verification commands/results.
 - Do not add GitHub Actions right now.
 - Do not remove user changes or rewrite unrelated files.
 

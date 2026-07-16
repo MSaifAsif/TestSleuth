@@ -71,4 +71,37 @@ final class TestSleuthMavenConfigTest {
         assertEquals(true, config.runtimeWaitsEnabled());
         assertEquals(true, config.runtimeWaitStacksEnabled());
     }
+
+    @Test
+    void parsesAllOptionsEnabled() {
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(
+                true,
+                "findings",
+                750,
+                2_500,
+                25,
+                true,
+                true,
+                125,
+                true,
+                75,
+                true,
+                true,
+                true
+        );
+
+        assertEquals(true, config.consoleEnabled());
+        assertEquals(TestSleuthMavenConfig.ConsoleDetail.FINDINGS, config.consoleDetail());
+        assertEquals(750, config.slowTestThreshold().toMillis());
+        assertEquals(2_500, config.verySlowTestThreshold().toMillis());
+        assertEquals(25, config.maxFindings());
+        assertEquals(true, config.slowTestsDetectorEnabled());
+        assertEquals(true, config.fixedWaitsDetectorEnabled());
+        assertEquals(125, config.fixedWaitThreshold().toMillis());
+        assertEquals(true, config.pollingWaitsDetectorEnabled());
+        assertEquals(75, config.pollingWaitThreshold().toMillis());
+        assertEquals(true, config.frameworkInitializationDetectorEnabled());
+        assertEquals(true, config.runtimeWaitsEnabled());
+        assertEquals(true, config.runtimeWaitStacksEnabled());
+    }
 }

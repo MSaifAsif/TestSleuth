@@ -11,7 +11,8 @@ final class MavenTestSleuthRunFiles {
             "events.json",
             "findings.json",
             "junit-events.json",
-            "junit4-events.json"
+            "junit4-events.json",
+            "runtime-wait-events.json"
     );
 
     void reset(Path outputDirectory) {

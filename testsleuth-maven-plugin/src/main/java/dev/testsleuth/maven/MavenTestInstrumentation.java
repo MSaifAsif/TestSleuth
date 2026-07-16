@@ -5,6 +5,7 @@ import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.junit4.TestSleuthJUnit4RunListener;
 import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
+import dev.testsleuth.runtimewait.RuntimeWaitCollector;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
@@ -28,6 +29,7 @@ final class MavenTestInstrumentation {
     static final String TESTSLEUTH_JUNIT4_ARTIFACT_ID = "testsleuth-junit4";
     static final String TESTSLEUTH_JUNIT5_GROUP_ID = "dev.testsleuth";
     static final String TESTSLEUTH_JUNIT5_ARTIFACT_ID = "testsleuth-junit5";
+    static final String TESTSLEUTH_RUNTIME_WAIT_ARTIFACT_ID = "testsleuth-runtime-wait";
     static final String MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY = "maven.test.additionalClasspath";
     private static final String MAVEN_PLUGIN_GROUP_ID = "org.apache.maven.plugins";
     private static final String SUREFIRE_ARTIFACT_ID = "maven-surefire-plugin";
@@ -39,28 +41,60 @@ final class MavenTestInstrumentation {
             Properties userProperties,
             Path junit5EventsFile,
             Path junit4EventsFile,
+            Path runtimeWaitEventsFile,
             String testSleuthVersion,
-            TestSleuthRunContext runContext
+            TestSleuthRunContext runContext,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled
     ) {
         Objects.requireNonNull(project, "project");
         Objects.requireNonNull(userProperties, "userProperties");
         Objects.requireNonNull(junit5EventsFile, "junit5EventsFile");
         Objects.requireNonNull(junit4EventsFile, "junit4EventsFile");
+        Objects.requireNonNull(runtimeWaitEventsFile, "runtimeWaitEventsFile");
         Objects.requireNonNull(runContext, "runContext");
         requireText(testSleuthVersion, "testSleuthVersion");
 
         boolean dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
         dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_JUNIT4_ARTIFACT_ID, testSleuthVersion) || dependencyAdded;
+        if (runtimeWaitsEnabled) {
+            dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_RUNTIME_WAIT_ARTIFACT_ID, testSleuthVersion)
+                    || dependencyAdded;
+        }
         userProperties.setProperty(JUNIT_LISTENER_AUTODETECTION_PROPERTY, "true");
         userProperties.setProperty(JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
         userProperties.setProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, junit5EventsFile.toString());
         userProperties.setProperty(TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY, junit4EventsFile.toString());
+        if (runtimeWaitsEnabled) {
+            userProperties.setProperty(RuntimeWaitCollector.EVENTS_FILE_PROPERTY, runtimeWaitEventsFile.toString());
+            userProperties.setProperty(RuntimeWaitCollector.STACKS_ENABLED_PROPERTY, Boolean.toString(runtimeWaitStacksEnabled));
+        }
         setUserProperties(userProperties, runContext);
-        appendAdditionalClasspath(userProperties);
-        configureTestPlugin(project, SUREFIRE_ARTIFACT_ID, junit5EventsFile, junit4EventsFile, testSleuthVersion, runContext);
-        configureTestPlugin(project, FAILSAFE_ARTIFACT_ID, junit5EventsFile, junit4EventsFile, testSleuthVersion, runContext);
+        appendAdditionalClasspath(userProperties, runtimeWaitsEnabled);
+        configureTestPlugin(
+                project,
+                SUREFIRE_ARTIFACT_ID,
+                junit5EventsFile,
+                junit4EventsFile,
+                runtimeWaitEventsFile,
+                testSleuthVersion,
+                runContext,
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled
+        );
+        configureTestPlugin(
+                project,
+                FAILSAFE_ARTIFACT_ID,
+                junit5EventsFile,
+                junit4EventsFile,
+                runtimeWaitEventsFile,
+                testSleuthVersion,
+                runContext,
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled
+        );
 
-        return new Result(dependencyAdded, junit5EventsFile, junit4EventsFile);
+        return new Result(dependencyAdded, junit5EventsFile, junit4EventsFile, runtimeWaitEventsFile, runtimeWaitsEnabled);
     }
 
     private static boolean ensureTestSleuthDependency(MavenProject project, String artifactId, String testSleuthVersion) {
@@ -86,8 +120,11 @@ final class MavenTestInstrumentation {
             String artifactId,
             Path junit5EventsFile,
             Path junit4EventsFile,
+            Path runtimeWaitEventsFile,
             String testSleuthVersion,
-            TestSleuthRunContext runContext
+            TestSleuthRunContext runContext,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled
     ) {
         Plugin plugin = findOrCreateBuildPlugin(project, artifactId);
         Xpp3Dom configuration = configuration(plugin);
@@ -96,12 +133,19 @@ final class MavenTestInstrumentation {
         setChildValue(systemProperties, JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY, "true");
         setChildValue(systemProperties, TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY, junit5EventsFile.toString());
         setChildValue(systemProperties, TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY, junit4EventsFile.toString());
+        if (runtimeWaitsEnabled) {
+            setChildValue(systemProperties, RuntimeWaitCollector.EVENTS_FILE_PROPERTY, runtimeWaitEventsFile.toString());
+            setChildValue(systemProperties, RuntimeWaitCollector.STACKS_ENABLED_PROPERTY, Boolean.toString(runtimeWaitStacksEnabled));
+        }
         setContextSystemProperties(systemProperties, runContext);
         appendSurefireProperty(configuration, JUNIT4_SUREFIRE_LISTENER_PROPERTY, TestSleuthJUnit4RunListener.class.getName());
 
         Xpp3Dom dependencies = child(configuration, "additionalClasspathDependencies");
         addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
         addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT4_ARTIFACT_ID, testSleuthVersion);
+        if (runtimeWaitsEnabled) {
+            addAdditionalClasspathDependency(dependencies, TESTSLEUTH_RUNTIME_WAIT_ARTIFACT_ID, testSleuthVersion);
+        }
     }
 
     private static Plugin findOrCreateBuildPlugin(MavenProject project, String artifactId) {
@@ -230,7 +274,7 @@ final class MavenTestInstrumentation {
         setChildValue(systemProperties, TestSleuthRunContext.FORK_NUMBER_PROPERTY, "${surefire.forkNumber}");
     }
 
-    private static void appendAdditionalClasspath(Properties userProperties) {
+    private static void appendAdditionalClasspath(Properties userProperties, boolean runtimeWaitsEnabled) {
         Set<String> elements = new LinkedHashSet<>();
         String existing = userProperties.getProperty(MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY);
         if (existing != null && !existing.isBlank()) {
@@ -244,6 +288,9 @@ final class MavenTestInstrumentation {
         elements.add(codeSourcePath(TestSleuthJUnit5Listener.class));
         elements.add(codeSourcePath(TestSleuthJUnit4RunListener.class));
         elements.add(codeSourcePath(EventJsonWriter.class));
+        if (runtimeWaitsEnabled) {
+            elements.add(codeSourcePath(RuntimeWaitCollector.class));
+        }
         userProperties.setProperty(
                 MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY,
                 elements.stream().collect(Collectors.joining(","))
@@ -269,6 +316,12 @@ final class MavenTestInstrumentation {
         }
     }
 
-    record Result(boolean dependencyAdded, Path junit5EventsFile, Path junit4EventsFile) {
+    record Result(
+            boolean dependencyAdded,
+            Path junit5EventsFile,
+            Path junit4EventsFile,
+            Path runtimeWaitEventsFile,
+            boolean runtimeWaitsEnabled
+    ) {
     }
 }

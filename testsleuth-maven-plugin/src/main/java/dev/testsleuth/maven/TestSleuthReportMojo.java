@@ -81,6 +81,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         Path findingsFile = output.resolve("findings.json");
         Path junit5Events = output.resolve("junit-events.json");
         Path junit4Events = output.resolve("junit4-events.json");
+        Path runtimeWaitEvents = output.resolve("runtime-wait-events.json");
         TestSleuthRunContext runContext = new MavenRunContextFactory()
                 .loadOrCreate(output, project, session.getUserProperties());
         java.util.Optional<MavenBuildTiming.RunTiming> runTiming = new MavenBuildTiming().load(output);
@@ -88,16 +89,20 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         MavenTestReportScanner.ScanResult scanResult = scanTestReports(runContext);
         TestSleuthEventJsonMerger merger = new TestSleuthEventJsonMerger();
         List<Path> junitEventFiles = List.of(junit5Events, junit4Events);
+        List<Path> sideEventFiles = List.of(junit5Events, junit4Events, runtimeWaitEvents);
         List<TestSleuthEvent> junitLifecycleEvents = junitEventFiles.stream()
                 .flatMap(file -> merger.readEvents(file).stream())
                 .toList();
-        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(junitEventFiles, scanResult.events());
+        List<TestSleuthEvent> runtimeWaitEventsList = merger.readEvents(runtimeWaitEvents);
+        TestSleuthEventJsonMerger.EventJson mergedEvents = merger.mergeEventFiles(sideEventFiles, scanResult.events());
         List<TestSleuthEvent> detectorEvents = new java.util.ArrayList<>(junitLifecycleEvents);
+        detectorEvents.addAll(runtimeWaitEventsList);
         detectorEvents.addAll(scanResult.events());
         MavenTimingSummary timingSummary = MavenTimingSummary.from(
                 runTiming.map(MavenBuildTiming.RunTiming::elapsedSinceStart),
                 detectorEvents
         );
+        MavenRuntimeWaitSummary runtimeWaitSummary = MavenRuntimeWaitSummary.from(detectorEvents);
         List<Finding> findings = detectFindings(config, detectorEvents, runContext);
         java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
 
@@ -128,6 +133,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 scanResult,
                 junitLifecycleEvents.size(),
                 timingSummary,
+                runtimeWaitSummary,
                 reportGenerationTime,
                 findings,
                 report,
@@ -175,6 +181,7 @@ public final class TestSleuthReportMojo extends AbstractMojo {
             TestSleuthRunContext runContext
     ) {
         List<Finding> findings = new java.util.ArrayList<>(new MavenTimingFindings(config).detect(events));
+        findings.addAll(new MavenRuntimeWaitFindings(config).detect(events));
         findings.addAll(new MavenFixedWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
         findings.addAll(new MavenPollingWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
         findings.addAll(new MavenFrameworkInitializationFindings(config, runContext)

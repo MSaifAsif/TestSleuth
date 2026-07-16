@@ -4,6 +4,7 @@ import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.junit4.TestSleuthJUnit4RunListener;
 import dev.testsleuth.junit5.TestSleuthJUnit5Extension;
 import dev.testsleuth.junit5.TestSleuthJUnit5Listener;
+import dev.testsleuth.runtimewait.RuntimeWaitCollector;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
@@ -26,24 +27,37 @@ final class MavenTestInstrumentationTest {
         Properties userProperties = new Properties();
         Path junit5EventsFile = Path.of("target/testsleuth/junit-events.json");
         Path junit4EventsFile = Path.of("target/testsleuth/junit4-events.json");
+        Path runtimeWaitEventsFile = Path.of("target/testsleuth/runtime-wait-events.json");
         TestSleuthRunContext runContext = runContext();
 
-        MavenTestInstrumentation.Result result = new MavenTestInstrumentation()
-                .apply(project, userProperties, junit5EventsFile, junit4EventsFile, "0.1.0-SNAPSHOT", runContext);
+        MavenTestInstrumentation.Result result = apply(
+                project,
+                userProperties,
+                junit5EventsFile,
+                junit4EventsFile,
+                runtimeWaitEventsFile,
+                runContext,
+                false,
+                false
+        );
 
         assertTrue(result.dependencyAdded());
         assertEquals(junit5EventsFile, result.junit5EventsFile());
         assertEquals(junit4EventsFile, result.junit4EventsFile());
+        assertEquals(runtimeWaitEventsFile, result.runtimeWaitEventsFile());
+        assertFalse(result.runtimeWaitsEnabled());
         assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_LISTENER_AUTODETECTION_PROPERTY));
         assertEquals("true", userProperties.getProperty(MavenTestInstrumentation.JUNIT_JUPITER_EXTENSION_AUTODETECTION_PROPERTY));
         assertEquals(junit5EventsFile.toString(), userProperties.getProperty(TestSleuthJUnit5Listener.EVENTS_FILE_PROPERTY));
         assertEquals(junit4EventsFile.toString(), userProperties.getProperty(TestSleuthJUnit4RunListener.EVENTS_FILE_PROPERTY));
+        assertFalse(userProperties.containsKey(RuntimeWaitCollector.EVENTS_FILE_PROPERTY));
         assertEquals("run-1", userProperties.getProperty(TestSleuthRunContext.BUILD_RUN_ID_PROPERTY));
         assertEquals("dev.testsleuth:sample", userProperties.getProperty(TestSleuthRunContext.MODULE_ID_PROPERTY));
         String additionalClasspath = userProperties.getProperty(MavenTestInstrumentation.MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY);
         assertTrue(additionalClasspath.contains("testsleuth-junit5"));
         assertTrue(additionalClasspath.contains("testsleuth-junit4"));
         assertTrue(additionalClasspath.contains("testsleuth-core"));
+        assertFalse(additionalClasspath.contains("testsleuth-runtime-wait"));
         assertEquals(2, project.getDependencies().size());
         assertInjectedDependency(project, "testsleuth-junit5");
         assertInjectedDependency(project, "testsleuth-junit4");
@@ -70,10 +84,48 @@ final class MavenTestInstrumentationTest {
                 .getValue());
         assertAdditionalClasspathDependency(configuration, "testsleuth-junit5");
         assertAdditionalClasspathDependency(configuration, "testsleuth-junit4");
+        assertMissingAdditionalClasspathDependency(configuration, "testsleuth-runtime-wait");
         assertEquals(TestSleuthJUnit4RunListener.class.getName(), configuration.getChild("properties")
                 .getChild("property")
                 .getChild("value")
                 .getValue());
+    }
+
+    @Test
+    void addsRuntimeWaitDependencyAndPropertiesWhenEnabled() {
+        MavenProject project = new MavenProject(new Model());
+        Properties userProperties = new Properties();
+        Path runtimeWaitEventsFile = Path.of("target/testsleuth/runtime-wait-events.json");
+
+        MavenTestInstrumentation.Result result = apply(
+                project,
+                userProperties,
+                Path.of("target/testsleuth/junit-events.json"),
+                Path.of("target/testsleuth/junit4-events.json"),
+                runtimeWaitEventsFile,
+                runContext(),
+                true,
+                true
+        );
+
+        assertTrue(result.runtimeWaitsEnabled());
+        assertEquals(runtimeWaitEventsFile, result.runtimeWaitEventsFile());
+        assertEquals(runtimeWaitEventsFile.toString(), userProperties.getProperty(RuntimeWaitCollector.EVENTS_FILE_PROPERTY));
+        assertEquals("true", userProperties.getProperty(RuntimeWaitCollector.STACKS_ENABLED_PROPERTY));
+        assertEquals(3, project.getDependencies().size());
+        assertInjectedDependency(project, "testsleuth-runtime-wait");
+        String additionalClasspath = userProperties.getProperty(MavenTestInstrumentation.MAVEN_TEST_ADDITIONAL_CLASSPATH_PROPERTY);
+        assertTrue(additionalClasspath.contains("testsleuth-runtime-wait"));
+
+        Plugin surefire = project.getBuild().getPluginsAsMap().get("org.apache.maven.plugins:maven-surefire-plugin");
+        Xpp3Dom configuration = (Xpp3Dom) surefire.getConfiguration();
+        assertEquals(runtimeWaitEventsFile.toString(), configuration.getChild("systemPropertyVariables")
+                .getChild(RuntimeWaitCollector.EVENTS_FILE_PROPERTY)
+                .getValue());
+        assertEquals("true", configuration.getChild("systemPropertyVariables")
+                .getChild(RuntimeWaitCollector.STACKS_ENABLED_PROPERTY)
+                .getValue());
+        assertAdditionalClasspathDependency(configuration, "testsleuth-runtime-wait");
     }
 
     @Test
@@ -86,15 +138,7 @@ final class MavenTestInstrumentationTest {
         existing.setScope("test");
         project.getDependencies().add(existing);
 
-        MavenTestInstrumentation.Result result = new MavenTestInstrumentation()
-                .apply(
-                        project,
-                        new Properties(),
-                        Path.of("target/testsleuth/junit-events.json"),
-                        Path.of("target/testsleuth/junit4-events.json"),
-                        "0.1.0-SNAPSHOT",
-                        runContext()
-                );
+        MavenTestInstrumentation.Result result = apply(project, new Properties(), false, false);
 
         assertTrue(result.dependencyAdded());
         assertEquals(2, project.getDependencies().size());
@@ -111,15 +155,7 @@ final class MavenTestInstrumentationTest {
         build.addPlugin(surefire);
         project.setBuild(build);
 
-        new MavenTestInstrumentation()
-                .apply(
-                        project,
-                        new Properties(),
-                        Path.of("target/testsleuth/junit-events.json"),
-                        Path.of("target/testsleuth/junit4-events.json"),
-                        "0.1.0-SNAPSHOT",
-                        runContext()
-                );
+        apply(project, new Properties(), false, false);
 
         assertEquals("3.3.1", surefire.getVersion());
     }
@@ -146,30 +182,55 @@ final class MavenTestInstrumentationTest {
         build.addPlugin(surefire);
         project.setBuild(build);
 
-        new MavenTestInstrumentation()
-                .apply(
-                        project,
-                        new Properties(),
-                        Path.of("target/testsleuth/junit-events.json"),
-                        Path.of("target/testsleuth/junit4-events.json"),
-                        "0.1.0-SNAPSHOT",
-                        runContext()
-                );
-        new MavenTestInstrumentation()
-                .apply(
-                        project,
-                        new Properties(),
-                        Path.of("target/testsleuth/junit-events.json"),
-                        Path.of("target/testsleuth/junit4-events.json"),
-                        "0.1.0-SNAPSHOT",
-                        runContext()
-                );
+        apply(project, new Properties(), false, false);
+        apply(project, new Properties(), false, false);
 
         String configuredListener = configuration.getChild("properties")
                 .getChild("property")
                 .getChild("value")
                 .getValue();
         assertEquals("com.example.ExistingListener," + TestSleuthJUnit4RunListener.class.getName(), configuredListener);
+    }
+
+    private static MavenTestInstrumentation.Result apply(
+            MavenProject project,
+            Properties userProperties,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled
+    ) {
+        return apply(
+                project,
+                userProperties,
+                Path.of("target/testsleuth/junit-events.json"),
+                Path.of("target/testsleuth/junit4-events.json"),
+                Path.of("target/testsleuth/runtime-wait-events.json"),
+                runContext(),
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled
+        );
+    }
+
+    private static MavenTestInstrumentation.Result apply(
+            MavenProject project,
+            Properties userProperties,
+            Path junit5EventsFile,
+            Path junit4EventsFile,
+            Path runtimeWaitEventsFile,
+            TestSleuthRunContext runContext,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled
+    ) {
+        return new MavenTestInstrumentation().apply(
+                project,
+                userProperties,
+                junit5EventsFile,
+                junit4EventsFile,
+                runtimeWaitEventsFile,
+                "0.1.0-SNAPSHOT",
+                runContext,
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled
+        );
     }
 
     private static void assertInjectedDependency(MavenProject project, String artifactId) {
@@ -191,6 +252,16 @@ final class MavenTestInstrumentationTest {
             }
         }
         throw new AssertionError("Missing additionalClasspathDependency " + artifactId);
+    }
+
+    private static void assertMissingAdditionalClasspathDependency(Xpp3Dom configuration, String artifactId) {
+        Xpp3Dom dependencies = configuration.getChild("additionalClasspathDependencies");
+        for (Xpp3Dom dependency : dependencies.getChildren("additionalClasspathDependency")) {
+            Xpp3Dom artifactIdNode = dependency.getChild("artifactId");
+            if (artifactIdNode != null && artifactId.equals(artifactIdNode.getValue())) {
+                throw new AssertionError("Unexpected additionalClasspathDependency " + artifactId);
+            }
+        }
     }
 
     private static TestSleuthRunContext runContext() {

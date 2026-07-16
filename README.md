@@ -4,6 +4,7 @@ TestSleuth is a local-first diagnostic tool for slow test suites.
 
 The project is currently in the Maven measurement foundation phase. The immediate goal is to make the Maven plugin observe test runs, aggregate results, and produce useful local and CI-friendly reports.
 Runtime wait collection is being designed as a future opt-in collector; source wait scanning remains the current implemented wait diagnosis path.
+The runtime wait module currently provides a direct collector API, Maven opt-in runtime event-file wiring, and runtime wait findings for observed wait events. Tests that import the direct API need a normal test dependency on `testsleuth-runtime-wait`. Automatic interception of JDK wait calls remains future work.
 
 ## Current Scope
 
@@ -73,7 +74,9 @@ Projects can also bind the plugin into the Maven lifecycle so normal `mvn verify
 
 The report currently includes timing-based findings for the slowest tests observed in Maven test reports. Findings include joined JUnit/Maven collector evidence and run context such as module, build run, Maven project, process, and fork when available. `findings.json` contains the same finding payload for CI systems and other tooling. These are investigation findings, not yet root-cause diagnoses.
 
-Console and HTML summaries also include an initial timing reconciliation: Maven-reported test time, JUnit-observed test time, JUnit setup and teardown time, and unclassified observed Maven lifecycle time when available. Console output includes named timing buckets for the lifecycle window, Maven test execution, JUnit observed execution, setup, teardown, unclassified lifecycle time, and report generation. The unclassified lifecycle bucket is a coarse signal for build setup, compilation, runner overhead, framework initialization, or other work not yet attributed to a specific test phase. The HTML report includes a run summary scorecard, top opportunity, and category breakdown before the detailed findings table.
+When runtime wait collection is enabled and runtime wait events are present, reports also produce wait findings for observed runtime waits above the configured fixed-wait threshold. Source wait detectors remain separate and opt-in.
+
+Console and HTML summaries also include an initial timing reconciliation: Maven-reported test time, JUnit-observed test time, JUnit setup and teardown time, and unclassified observed Maven lifecycle time when available. Console output includes named timing buckets for the lifecycle window, Maven test execution, JUnit observed execution, setup, teardown, unclassified lifecycle time, and report generation. When runtime wait events are present, console output also reports runtime wait event count, observed wait time, and collector overhead. The unclassified lifecycle bucket is a coarse signal for build setup, compilation, runner overhead, framework initialization, or other work not yet attributed to a specific test phase. The HTML report includes a run summary scorecard, top opportunity, and category breakdown before the detailed findings table.
 
 ## Sample Project
 
@@ -86,6 +89,21 @@ mvn -pl testsleuth-samples/slow-junit5-maven verify
 The sample produces default slow-test findings without lowering the `1000ms` threshold,
 and includes fixed-wait, polling-wait, JDK timed wait, setup-heavy, Failsafe integration-test,
 legacy JUnit 4, and Spring-style framework initialization examples.
+
+It also includes an opt-in worst-case sample that deliberately exercises slow-test,
+fixed-wait source, polling-wait source, framework-initialization, and runtime-wait
+findings together:
+
+```bash
+mvn -pl testsleuth-samples/slow-junit5-maven verify \
+  -Dtestsleuth.sample.worstCase=true \
+  -Dtestsleuth.detectors.fixedWaits=true \
+  -Dtestsleuth.detectors.pollingWaits=true \
+  -Dtestsleuth.detectors.frameworkInitialization=true \
+  -Dtestsleuth.runtime.waits=true \
+  -Dtestsleuth.runtime.waitStacks=true \
+  -Dtestsleuth.console.detail=findings
+```
 
 The repository also includes a pure Maven/JUnit 4 sample that exercises the legacy Surefire JUnit 4 provider and TestSleuth's JUnit 4 `RunListener` path:
 
@@ -127,8 +145,8 @@ Current options:
 - `testsleuth.detectors.fixedWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls and JDK timed waits such as `await(timeout, TimeUnit...)`, `tryAcquire(timeout, TimeUnit...)`, `Future.get(timeout, TimeUnit...)`, and `orTimeout(timeout, TimeUnit...)`; default is `false`.
 - `testsleuth.detectors.pollingWaits`: enables opt-in test-source scanning for direct `Thread.sleep(...)` calls and JDK timed waits inside nearby loops; default is `false`.
 - `testsleuth.detectors.frameworkInitialization`: enables opt-in source and timing correlation for framework/application-context initialization candidates; default is `false`.
-- `testsleuth.runtime.waits`: reserved opt-in switch for future runtime wait collection; default is `false`.
-- `testsleuth.runtime.waitStacks`: reserved opt-in switch for future runtime wait stack evidence; default is `false`.
+- `testsleuth.runtime.waits`: enables opt-in runtime wait collector classpath and event-file wiring for tests that use the direct runtime wait collector API; default is `false`.
+- `testsleuth.runtime.waitStacks`: enables opt-in runtime wait stack evidence for supported runtime collectors; default is `false`.
 
 ## Current JUnit 5 Listener
 

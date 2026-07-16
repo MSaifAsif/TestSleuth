@@ -20,6 +20,9 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 public final class RuntimeWaitCollector {
+    public static final String EVENTS_FILE_PROPERTY = "testsleuth.runtime.waits.file";
+    public static final String STACKS_ENABLED_PROPERTY = "testsleuth.runtime.waitStacks";
+
     private final RuntimeWaitEventFactory eventFactory;
     private final List<TestSleuthEvent> events = new ArrayList<>();
 

@@ -23,6 +23,12 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.version")
     private String testSleuthVersion;
 
+    @Parameter(property = "testsleuth.runtime.waits", defaultValue = "false")
+    private boolean runtimeWaitsEnabled;
+
+    @Parameter(property = "testsleuth.runtime.waitStacks", defaultValue = "false")
+    private boolean runtimeWaitStacksEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
         Build build = project.getBuild();
@@ -33,6 +39,7 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         Path outputDirectory = Path.of(build.getDirectory()).resolve("testsleuth");
         Path junit5EventsFile = outputDirectory.resolve("junit-events.json");
         Path junit4EventsFile = outputDirectory.resolve("junit4-events.json");
+        Path runtimeWaitEventsFile = outputDirectory.resolve("runtime-wait-events.json");
         new MavenTestSleuthRunFiles().reset(outputDirectory);
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthRunContext runContext = runContextFactory.create(project, session.getUserProperties());
@@ -42,8 +49,11 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
                 session.getUserProperties(),
                 junit5EventsFile,
                 junit4EventsFile,
+                runtimeWaitEventsFile,
                 instrumentationVersion,
-                runContext
+                runContext,
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled
         );
         runContextFactory.write(outputDirectory, runContext);
         new MavenBuildTiming().start(outputDirectory);
@@ -55,6 +65,9 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         }
         getLog().info("Configured JUnit 5 lifecycle event output at " + result.junit5EventsFile());
         getLog().info("Configured JUnit 4 lifecycle event output at " + result.junit4EventsFile());
+        if (result.runtimeWaitsEnabled()) {
+            getLog().info("Configured runtime wait event output at " + result.runtimeWaitEventsFile());
+        }
         getLog().debug("Configured TestSleuth build run " + runContext.buildRunId()
                 + " for module " + runContext.moduleId());
     }

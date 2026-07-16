@@ -103,6 +103,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                 aggregateLifecycleWindow(aggregateEvents.moduleLifecycleWindows()),
                 aggregateEvents.detectorEvents()
         );
+        MavenRuntimeWaitSummary runtimeWaitSummary = MavenRuntimeWaitSummary.from(aggregateEvents.detectorEvents());
         List<Finding> findings = detectFindings(config, aggregateEvents.detectorEvents());
         java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
 
@@ -134,6 +135,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
                 scanResult,
                 junitLifecycleEvents,
                 timingSummary,
+                runtimeWaitSummary,
                 reportGenerationTime,
                 findings,
                 report,
@@ -173,6 +175,7 @@ public final class TestSleuthAggregateReportMojo extends AbstractMojo {
     private List<Finding> detectFindings(TestSleuthMavenConfig config, List<TestSleuthEvent> events)
             throws MojoExecutionException {
         List<Finding> findings = new ArrayList<>(new MavenTimingFindings(config).detect(events));
+        findings.addAll(new MavenRuntimeWaitFindings(config).detect(events));
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         for (MavenProject reactorProject : session.getProjects()) {
             TestSleuthRunContext runContext = runContextFactory.loadOrCreate(

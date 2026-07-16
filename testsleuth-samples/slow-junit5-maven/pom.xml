@@ -14,6 +14,10 @@
     <name>TestSleuth Sample - Slow JUnit 5 Maven</name>
     <description>Intentionally slow JUnit 5 Maven sample used to validate TestSleuth reports.</description>
 
+    <properties>
+        <testsleuth.runtime.waits>true</testsleuth.runtime.waits>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -28,6 +32,11 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.testsleuth</groupId>
+            <artifactId>testsleuth-runtime-wait</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

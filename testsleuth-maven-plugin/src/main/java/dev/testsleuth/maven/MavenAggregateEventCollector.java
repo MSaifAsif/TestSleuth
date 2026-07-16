@@ -25,6 +25,7 @@ final class MavenAggregateEventCollector {
             Path moduleEvents = module.outputDirectory().resolve("events.json");
             Path moduleJunit5Events = module.outputDirectory().resolve("junit-events.json");
             Path moduleJunit4Events = module.outputDirectory().resolve("junit4-events.json");
+            Path moduleRuntimeWaitEvents = module.outputDirectory().resolve("runtime-wait-events.json");
 
             if (Files.isRegularFile(moduleEvents)) {
                 moduleEventFiles.add(moduleEvents);
@@ -37,6 +38,10 @@ final class MavenAggregateEventCollector {
                 if (Files.isRegularFile(moduleJunit4Events)) {
                     moduleEventFiles.add(moduleJunit4Events);
                     detectorEvents.addAll(merger.readEvents(moduleJunit4Events));
+                }
+                if (Files.isRegularFile(moduleRuntimeWaitEvents)) {
+                    moduleEventFiles.add(moduleRuntimeWaitEvents);
+                    detectorEvents.addAll(merger.readEvents(moduleRuntimeWaitEvents));
                 }
             }
 

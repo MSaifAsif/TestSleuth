@@ -17,6 +17,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Runtime wait collector implementation plan documenting the next opt-in collector slices.
 - Runtime wait collector module shell with normalized wait observation event mapping and overhead attributes.
 - Runtime wait collector API that records normalized events for direct `Thread.sleep`, `Object.wait`, `LockSupport.parkNanos`, and `LockSupport.parkUntil` waits.
+- Maven instrumentation can now opt in runtime wait collector classpath and event-file wiring with `testsleuth.runtime.waits=true`.
+- Maven reports now emit runtime wait findings for observed runtime wait events above the configured fixed-wait threshold.
+- Maven console output now reports runtime wait event count, observed wait time, and runtime collector overhead when runtime wait events are present.
+- Maven configuration tests now cover all current TestSleuth options enabled together.
+- Slow Maven/JUnit 5 sample now includes an opt-in worst-case test that exercises slow-test, fixed-wait, polling-wait, framework-initialization, and runtime-wait findings together.
 - First timing-based Maven detector that reports the slowest observed tests as investigation findings.
 - Configurable Maven report thresholds, finding limits, detector flags, and console detail.
 - Concise CI-oriented console summary from `testsleuth:report`.
