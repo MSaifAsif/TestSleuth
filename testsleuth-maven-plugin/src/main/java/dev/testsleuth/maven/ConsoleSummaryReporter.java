@@ -43,6 +43,7 @@ final class ConsoleSummaryReporter {
         timingSummary.lifecycleWindow().ifPresent(duration ->
                 log.info("[TestSleuth] Maven lifecycle window: " + duration.toMillis() + " ms"));
         log.info(timingSummary.consoleLine());
+        log.info(timingBucketsLine(timingSummary, reportGenerationTime));
         log.info("[TestSleuth] Report overhead: " + reportGenerationTime.toMillis() + " ms");
         log.info("[TestSleuth] Findings: " + findings.size() + " above configured thresholds");
         log.info("[TestSleuth] Slow-test threshold: " + config.slowTestThreshold().toMillis() + " ms");
@@ -82,6 +83,22 @@ final class ConsoleSummaryReporter {
         appendContext(suffix, "runner", testRunner);
         appendContext(suffix, "collectors", collectors);
         return suffix.toString();
+    }
+
+    private static String timingBucketsLine(MavenTimingSummary timingSummary, java.time.Duration reportGenerationTime) {
+        StringBuilder line = new StringBuilder("[TestSleuth] Timing buckets: ");
+        for (int index = 0; index < timingSummary.timingBuckets().size(); index++) {
+            MavenTimingSummary.TimingBucket bucket = timingSummary.timingBuckets().get(index);
+            if (index > 0) {
+                line.append(", ");
+            }
+            line.append(bucket.name()).append(" ").append(bucket.duration().toMillis()).append(" ms");
+        }
+        if (!timingSummary.timingBuckets().isEmpty()) {
+            line.append(", ");
+        }
+        line.append("Report generation ").append(reportGenerationTime.toMillis()).append(" ms");
+        return line.toString();
     }
 
     private static void appendContext(StringBuilder suffix, String label, String value) {

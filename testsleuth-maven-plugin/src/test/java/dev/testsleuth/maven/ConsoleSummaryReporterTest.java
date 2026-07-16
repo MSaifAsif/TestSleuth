@@ -27,13 +27,14 @@ final class ConsoleSummaryReporterTest {
                 config,
                 new MavenTestReportScanner.ScanResult(List.of()),
                 3,
-                new MavenTimingSummary(
+                MavenTimingSummary.from(
                         java.util.Optional.of(Duration.ofMillis(2_500)),
-                        Duration.ofMillis(1_500),
-                        Duration.ofMillis(1_450),
-                        Duration.ofMillis(100),
-                        Duration.ofMillis(50),
-                        java.util.Optional.of(Duration.ofMillis(1_000))
+                        List.of(
+                                event("maven", dev.testsleuth.core.event.EventKind.TEST_FINISHED, "maven-test-report", 1_500),
+                                event("junit", dev.testsleuth.core.event.EventKind.TEST_FINISHED, "junit5-listener", 1_450),
+                                event("setup", dev.testsleuth.core.event.EventKind.SETUP_FINISHED, "junit5-listener", 100),
+                                event("teardown", dev.testsleuth.core.event.EventKind.TEARDOWN_FINISHED, "junit5-listener", 50)
+                        )
                 ),
                 Duration.ofMillis(75),
                 List.of(finding()),
@@ -46,7 +47,12 @@ final class ConsoleSummaryReporterTest {
                 "[TestSleuth] Maven lifecycle window: 2500 ms"
         )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
-                "[TestSleuth] Timing: Maven tests 1500 ms, JUnit observed 1450 ms, setup 100 ms, teardown 50 ms, lifecycle remainder 1000 ms"
+                "[TestSleuth] Timing: Maven tests 1500 ms, JUnit observed 1450 ms, setup 100 ms, teardown 50 ms, unclassified lifecycle 1000 ms"
+        )));
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "[TestSleuth] Timing buckets: Maven lifecycle window 2500 ms, Maven test execution 1500 ms, "
+                        + "JUnit observed execution 1450 ms, JUnit setup 100 ms, JUnit teardown 50 ms, "
+                        + "Unclassified lifecycle 1000 ms, Report generation 75 ms"
         )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] Report overhead: 75 ms"
@@ -83,6 +89,26 @@ final class ConsoleSummaryReporterTest {
                 "Inspect this test's setup, framework initialization, fixtures, waits, and external resources.",
                 "Timing-only finding. It identifies where to investigate, but does not yet prove waste.",
                 "Rerun TestSleuth after changes and compare this test's observed duration."
+        );
+    }
+
+    private static dev.testsleuth.core.event.TestSleuthEvent event(
+            String id,
+            dev.testsleuth.core.event.EventKind kind,
+            String collector,
+            long durationMillis
+    ) {
+        return new dev.testsleuth.core.event.TestSleuthEvent(
+                new dev.testsleuth.core.event.EventId(id),
+                java.util.Optional.empty(),
+                kind,
+                new dev.testsleuth.core.event.Subject(dev.testsleuth.core.event.SubjectType.TEST_METHOD, id),
+                java.time.Instant.EPOCH,
+                0,
+                java.util.Map.of(
+                        "collector", collector,
+                        "durationMillis", Long.toString(durationMillis)
+                )
         );
     }
 

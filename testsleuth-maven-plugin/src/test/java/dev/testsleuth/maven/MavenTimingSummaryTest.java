@@ -38,9 +38,14 @@ final class MavenTimingSummaryTest {
         assertEquals(25, summary.junitTeardownTime().toMillis());
         assertEquals(1_000, summary.unaccountedLifecycleTime().orElseThrow().toMillis());
         assertEquals(
-                "[TestSleuth] Timing: Maven tests 1000 ms, JUnit observed 1025 ms, setup 40 ms, teardown 25 ms, lifecycle remainder 1000 ms",
+                "[TestSleuth] Timing: Maven tests 1000 ms, JUnit observed 1025 ms, setup 40 ms, teardown 25 ms, unclassified lifecycle 1000 ms",
                 summary.consoleLine()
         );
+        assertEquals(6, summary.timingBuckets().size());
+        assertEquals("Maven lifecycle window", summary.timingBuckets().get(0).name());
+        assertEquals(2_000, summary.timingBuckets().get(0).duration().toMillis());
+        assertEquals("Unclassified lifecycle", summary.timingBuckets().get(5).name());
+        assertEquals(1_000, summary.timingBuckets().get(5).duration().toMillis());
     }
 
     @Test
@@ -62,6 +67,7 @@ final class MavenTimingSummaryTest {
 
         assertTrue(summary.unaccountedLifecycleTime().isEmpty());
         assertEquals("[TestSleuth] Timing: Maven tests 700 ms, JUnit observed 0 ms, setup 0 ms, teardown 0 ms", summary.consoleLine());
+        assertEquals(4, summary.timingBuckets().size());
     }
 
     private static TestSleuthEvent event(String id, String collector, long durationMillis) {

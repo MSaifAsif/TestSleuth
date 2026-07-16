@@ -16,6 +16,7 @@
         <module>testsleuth-core</module>
         <module>testsleuth-junit4</module>
         <module>testsleuth-junit5</module>
+        <module>testsleuth-runtime-wait</module>
         <module>testsleuth-report</module>
         <module>testsleuth-maven-plugin</module>
         <module>testsleuth-samples/slow-junit5-maven</module>
@@ -53,6 +54,11 @@
             <dependency>
                 <groupId>dev.testsleuth</groupId>
                 <artifactId>testsleuth-junit5</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.testsleuth</groupId>
+                <artifactId>testsleuth-runtime-wait</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

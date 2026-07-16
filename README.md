@@ -3,6 +3,7 @@
 TestSleuth is a local-first diagnostic tool for slow test suites.
 
 The project is currently in the Maven measurement foundation phase. The immediate goal is to make the Maven plugin observe test runs, aggregate results, and produce useful local and CI-friendly reports.
+Runtime wait collection is being designed as a future opt-in collector; source wait scanning remains the current implemented wait diagnosis path.
 
 ## Current Scope
 
@@ -72,7 +73,7 @@ Projects can also bind the plugin into the Maven lifecycle so normal `mvn verify
 
 The report currently includes timing-based findings for the slowest tests observed in Maven test reports. Findings include joined JUnit/Maven collector evidence and run context such as module, build run, Maven project, process, and fork when available. `findings.json` contains the same finding payload for CI systems and other tooling. These are investigation findings, not yet root-cause diagnoses.
 
-Console and HTML summaries also include an initial timing reconciliation: Maven-reported test time, JUnit-observed test time, JUnit setup and teardown time, and the remaining observed Maven lifecycle window when available. The lifecycle remainder is a coarse signal for build setup, compilation, runner overhead, framework initialization, or other work not yet attributed to a specific test phase. Console output includes TestSleuth report overhead. The HTML report includes a run summary scorecard, top opportunity, and category breakdown before the detailed findings table.
+Console and HTML summaries also include an initial timing reconciliation: Maven-reported test time, JUnit-observed test time, JUnit setup and teardown time, and unclassified observed Maven lifecycle time when available. Console output includes named timing buckets for the lifecycle window, Maven test execution, JUnit observed execution, setup, teardown, unclassified lifecycle time, and report generation. The unclassified lifecycle bucket is a coarse signal for build setup, compilation, runner overhead, framework initialization, or other work not yet attributed to a specific test phase. The HTML report includes a run summary scorecard, top opportunity, and category breakdown before the detailed findings table.
 
 ## Sample Project
 
@@ -149,6 +150,7 @@ TestSleuth is licensed under the Apache License, Version 2.0. See [LICENSE.txt](
 testsleuth-core
 testsleuth-junit4
 testsleuth-junit5
+testsleuth-runtime-wait
 testsleuth-report
 testsleuth-maven-plugin
 testsleuth-samples/slow-junit5-maven

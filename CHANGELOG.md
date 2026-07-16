@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Maven `testsleuth:report` now merges JUnit lifecycle events with Maven XML report events when both are present.
 - Core runtime wait event attribute contract for future opt-in runtime wait instrumentation.
 - Maven runtime wait collection flags reserved for future opt-in wait instrumentation.
+- Runtime wait collector implementation plan documenting the next opt-in collector slices.
+- Runtime wait collector module shell with normalized wait observation event mapping and overhead attributes.
+- Runtime wait collector API that records normalized events for direct `Thread.sleep`, `Object.wait`, `LockSupport.parkNanos`, and `LockSupport.parkUntil` waits.
 - First timing-based Maven detector that reports the slowest observed tests as investigation findings.
 - Configurable Maven report thresholds, finding limits, detector flags, and console detail.
 - Concise CI-oriented console summary from `testsleuth:report`.
@@ -38,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Maven XML report events now include Surefire/Failsafe runner metadata and configured fork settings when available.
 - Maven reports now include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
 - Maven console and HTML summaries now include initial timing reconciliation for Maven-reported test time, JUnit-observed test time, setup time, teardown time, and lifecycle remainder.
+- Maven timing reconciliation now exposes named console timing buckets and labels unattributed time as unclassified lifecycle time.
 - JUnit 5 instrumentation now captures per-test setup and teardown phase events through a Jupiter extension.
 - Maven instrumentation now injects JUnit 4 listener support and merges `junit4-events.json` into normal reports.
 - JUnit lifecycle event collectors now preserve existing event files so Surefire and Failsafe phases can contribute to the same report run.

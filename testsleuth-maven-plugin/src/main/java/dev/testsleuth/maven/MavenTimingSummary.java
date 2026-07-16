@@ -14,7 +14,8 @@ record MavenTimingSummary(
         Duration junitObservedTestTime,
         Duration junitSetupTime,
         Duration junitTeardownTime,
-        Optional<Duration> unaccountedLifecycleTime
+        Optional<Duration> unaccountedLifecycleTime,
+        List<TimingBucket> timingBuckets
 ) {
     MavenTimingSummary {
         lifecycleWindow = Objects.requireNonNull(lifecycleWindow, "lifecycleWindow");
@@ -23,6 +24,7 @@ record MavenTimingSummary(
         Objects.requireNonNull(junitSetupTime, "junitSetupTime");
         Objects.requireNonNull(junitTeardownTime, "junitTeardownTime");
         unaccountedLifecycleTime = Objects.requireNonNull(unaccountedLifecycleTime, "unaccountedLifecycleTime");
+        timingBuckets = List.copyOf(Objects.requireNonNull(timingBuckets, "timingBuckets"));
     }
 
     static MavenTimingSummary from(Optional<Duration> lifecycleWindow, List<TestSleuthEvent> events) {
@@ -44,7 +46,15 @@ record MavenTimingSummary(
                 junitObservedTestTime,
                 junitSetupTime,
                 junitTeardownTime,
-                unaccountedLifecycleTime
+                unaccountedLifecycleTime,
+                timingBuckets(
+                        lifecycleWindow,
+                        mavenReportedTestTime,
+                        junitObservedTestTime,
+                        junitSetupTime,
+                        junitTeardownTime,
+                        unaccountedLifecycleTime
+                )
         );
     }
 
@@ -59,7 +69,7 @@ record MavenTimingSummary(
                 .append(junitTeardownTime.toMillis())
                 .append(" ms");
         unaccountedLifecycleTime.ifPresent(duration -> line
-                .append(", lifecycle remainder ")
+                .append(", unclassified lifecycle ")
                 .append(duration.toMillis())
                 .append(" ms"));
         return line.toString();
@@ -76,10 +86,28 @@ record MavenTimingSummary(
                 .append(junitTeardownTime.toMillis())
                 .append(" ms");
         unaccountedLifecycleTime.ifPresent(duration -> sentence
-                .append("; lifecycle remainder ")
+                .append("; unclassified lifecycle time ")
                 .append(duration.toMillis())
                 .append(" ms"));
         return sentence.append(". ").toString();
+    }
+
+    private static List<TimingBucket> timingBuckets(
+            Optional<Duration> lifecycleWindow,
+            Duration mavenReportedTestTime,
+            Duration junitObservedTestTime,
+            Duration junitSetupTime,
+            Duration junitTeardownTime,
+            Optional<Duration> unaccountedLifecycleTime
+    ) {
+        java.util.ArrayList<TimingBucket> buckets = new java.util.ArrayList<>();
+        lifecycleWindow.ifPresent(duration -> buckets.add(new TimingBucket("Maven lifecycle window", duration)));
+        buckets.add(new TimingBucket("Maven test execution", mavenReportedTestTime));
+        buckets.add(new TimingBucket("JUnit observed execution", junitObservedTestTime));
+        buckets.add(new TimingBucket("JUnit setup", junitSetupTime));
+        buckets.add(new TimingBucket("JUnit teardown", junitTeardownTime));
+        unaccountedLifecycleTime.ifPresent(duration -> buckets.add(new TimingBucket("Unclassified lifecycle", duration)));
+        return buckets;
     }
 
     private static Duration totalFinishedDuration(List<TestSleuthEvent> events, String collector) {
@@ -100,6 +128,18 @@ record MavenTimingSummary(
             return Math.max(0, Long.parseLong(event.attributes().getOrDefault("durationMillis", "0")));
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    record TimingBucket(String name, Duration duration) {
+        TimingBucket {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("timing bucket name must not be blank");
+            }
+            Objects.requireNonNull(duration, "duration");
+            if (duration.isNegative()) {
+                throw new IllegalArgumentException("timing bucket duration must not be negative");
+            }
         }
     }
 }
