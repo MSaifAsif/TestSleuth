@@ -4,7 +4,9 @@ import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.EvidenceType;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.AttributionScope;
 import dev.testsleuth.core.finding.FindingCategory;
 import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
@@ -113,9 +115,11 @@ final class MavenFrameworkInitializationFindings {
                 "Framework initialization candidate: " + candidate.className(),
                 FindingCategory.SPRING_CONTEXT,
                 severity(candidate.duration()),
-                Confidence.MEDIUM,
-                candidate.duration(),
-                new TimeSavingEstimate(Duration.ZERO, candidate.duration()),
+                Confidence.LOW,
+                EvidenceType.POTENTIAL,
+                AttributionScope.UNCLASSIFIED,
+                Duration.ZERO,
+                new TimeSavingEstimate(Duration.ZERO, Duration.ZERO),
                 List.of(location, candidate.className()),
                 List.of(
                         "Observed class duration " + candidate.duration().toMillis() + " ms for " + candidate.className() + ".",
@@ -130,10 +134,10 @@ final class MavenFrameworkInitializationFindings {
                         "Process IDs: " + runContext.processId() + ".",
                         "Fork numbers: " + runContext.forkNumber() + "."
                 ),
-                "The test class has framework/application-context indicators and consumed enough observed test time to warrant investigation.",
+                "The test class has framework/application-context indicators and is slow, but this run did not measure framework startup as the cause.",
                 "Check whether the test needs a full application context, whether similar contexts can be reused, or whether a narrower test slice/fake is sufficient.",
-                "Source and class-duration finding. Confirm context startup is the dominant cost before changing test scope.",
-                "Rerun TestSleuth and compare this class duration and future framework-context findings."
+                "Potential/static finding. Confirm framework startup is the dominant cost before changing test scope.",
+                "Use a future JFR-backed run to measure framework spans before changing test scope."
         );
     }
 

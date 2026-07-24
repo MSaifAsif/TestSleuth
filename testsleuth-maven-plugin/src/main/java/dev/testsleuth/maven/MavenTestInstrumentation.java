@@ -45,7 +45,9 @@ final class MavenTestInstrumentation {
             String testSleuthVersion,
             TestSleuthRunContext runContext,
             boolean runtimeWaitsEnabled,
-            boolean runtimeWaitStacksEnabled
+            boolean runtimeWaitStacksEnabled,
+            boolean jfrEnabled,
+            Path jfrRecordingsDirectory
     ) {
         Objects.requireNonNull(project, "project");
         Objects.requireNonNull(userProperties, "userProperties");
@@ -53,6 +55,7 @@ final class MavenTestInstrumentation {
         Objects.requireNonNull(junit4EventsFile, "junit4EventsFile");
         Objects.requireNonNull(runtimeWaitEventsFile, "runtimeWaitEventsFile");
         Objects.requireNonNull(runContext, "runContext");
+        Objects.requireNonNull(jfrRecordingsDirectory, "jfrRecordingsDirectory");
         requireText(testSleuthVersion, "testSleuthVersion");
 
         boolean dependencyAdded = ensureTestSleuthDependency(project, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
@@ -70,6 +73,9 @@ final class MavenTestInstrumentation {
             userProperties.setProperty(RuntimeWaitCollector.STACKS_ENABLED_PROPERTY, Boolean.toString(runtimeWaitStacksEnabled));
         }
         setUserProperties(userProperties, runContext);
+        if (jfrEnabled) {
+            appendJfrUserArgLine(userProperties, jfrRecordingsDirectory);
+        }
         appendAdditionalClasspath(userProperties, runtimeWaitsEnabled);
         configureTestPlugin(
                 project,
@@ -80,7 +86,9 @@ final class MavenTestInstrumentation {
                 testSleuthVersion,
                 runContext,
                 runtimeWaitsEnabled,
-                runtimeWaitStacksEnabled
+                runtimeWaitStacksEnabled,
+                jfrEnabled,
+                jfrRecordingsDirectory
         );
         configureTestPlugin(
                 project,
@@ -91,10 +99,12 @@ final class MavenTestInstrumentation {
                 testSleuthVersion,
                 runContext,
                 runtimeWaitsEnabled,
-                runtimeWaitStacksEnabled
+                runtimeWaitStacksEnabled,
+                jfrEnabled,
+                jfrRecordingsDirectory
         );
 
-        return new Result(dependencyAdded, junit5EventsFile, junit4EventsFile, runtimeWaitEventsFile, runtimeWaitsEnabled);
+        return new Result(dependencyAdded, junit5EventsFile, junit4EventsFile, runtimeWaitEventsFile, runtimeWaitsEnabled, jfrEnabled);
     }
 
     private static boolean ensureTestSleuthDependency(MavenProject project, String artifactId, String testSleuthVersion) {
@@ -124,7 +134,9 @@ final class MavenTestInstrumentation {
             String testSleuthVersion,
             TestSleuthRunContext runContext,
             boolean runtimeWaitsEnabled,
-            boolean runtimeWaitStacksEnabled
+            boolean runtimeWaitStacksEnabled,
+            boolean jfrEnabled,
+            Path jfrRecordingsDirectory
     ) {
         Plugin plugin = findOrCreateBuildPlugin(project, artifactId);
         Xpp3Dom configuration = configuration(plugin);
@@ -139,6 +151,9 @@ final class MavenTestInstrumentation {
         }
         setContextSystemProperties(systemProperties, runContext);
         appendSurefireProperty(configuration, JUNIT4_SUREFIRE_LISTENER_PROPERTY, TestSleuthJUnit4RunListener.class.getName());
+        if (jfrEnabled) {
+            new MavenJfrRecording().appendRecordingArgument(configuration, jfrRecordingsDirectory, runnerName(artifactId));
+        }
 
         Xpp3Dom dependencies = child(configuration, "additionalClasspathDependencies");
         addAdditionalClasspathDependency(dependencies, TESTSLEUTH_JUNIT5_ARTIFACT_ID, testSleuthVersion);
@@ -146,6 +161,10 @@ final class MavenTestInstrumentation {
         if (runtimeWaitsEnabled) {
             addAdditionalClasspathDependency(dependencies, TESTSLEUTH_RUNTIME_WAIT_ARTIFACT_ID, testSleuthVersion);
         }
+    }
+
+    private static String runnerName(String artifactId) {
+        return SUREFIRE_ARTIFACT_ID.equals(artifactId) ? "surefire" : "failsafe";
     }
 
     private static Plugin findOrCreateBuildPlugin(MavenProject project, String artifactId) {
@@ -297,6 +316,15 @@ final class MavenTestInstrumentation {
         );
     }
 
+    private static void appendJfrUserArgLine(Properties userProperties, Path jfrRecordingsDirectory) {
+        String existing = userProperties.getProperty("argLine", "").trim();
+        String recordingArgument = new MavenJfrRecording().recordingArgumentForProcess(jfrRecordingsDirectory);
+        if (existing.contains("-XX:StartFlightRecording=")) {
+            return;
+        }
+        userProperties.setProperty("argLine", existing.isBlank() ? recordingArgument : existing + " " + recordingArgument);
+    }
+
     private static String codeSourcePath(Class<?> type) {
         CodeSource codeSource = type.getProtectionDomain().getCodeSource();
         if (codeSource == null || codeSource.getLocation() == null) {
@@ -321,7 +349,8 @@ final class MavenTestInstrumentation {
             Path junit5EventsFile,
             Path junit4EventsFile,
             Path runtimeWaitEventsFile,
-            boolean runtimeWaitsEnabled
+            boolean runtimeWaitsEnabled,
+            boolean jfrEnabled
     ) {
     }
 }

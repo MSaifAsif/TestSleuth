@@ -38,6 +38,8 @@ final class SlowTestDetectorTest {
         assertEquals(2, findings.size());
         assertEquals("Slow observed test: slow", findings.get(0).title());
         assertEquals(FindingSeverity.HIGH, findings.get(0).severity());
+        assertEquals(dev.testsleuth.core.finding.EvidenceType.MEASURED, findings.get(0).evidenceType());
+        assertEquals(dev.testsleuth.core.finding.AttributionScope.DIRECT_TEST_THREAD, findings.get(0).attributionScope());
         assertEquals(1_250, findings.get(0).observedCost().toMillis());
     }
 

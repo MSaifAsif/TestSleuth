@@ -65,7 +65,48 @@ final class ConsoleSummaryReporterTest {
         )));
         assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
                 "[TestSleuth] - MEDIUM Slow observed test: slowExample "
-                        + "(1500 ms, module=dev.testsleuth:sample, fork=1, runner=surefire, collectors=junit5-listener, maven-test-report)"
+                        + "(1500 ms, evidence=MEASURED, scope=DIRECT_TEST_THREAD, "
+                        + "module=dev.testsleuth:sample, fork=1, runner=surefire, collectors=junit5-listener, maven-test-report)"
+        )));
+    }
+
+    @Test
+    void potentialFindingDetailDoesNotPresentAZeroCostAsMeasured() {
+        RecordingLog log = new RecordingLog();
+        Finding potential = new Finding(
+                new FindingId("fixed-wait:ExampleTest"),
+                "Fixed wait in test source: ExampleTest.java:10",
+                FindingCategory.WAITING,
+                FindingSeverity.MEDIUM,
+                Confidence.LOW,
+                dev.testsleuth.core.finding.EvidenceType.POTENTIAL,
+                dev.testsleuth.core.finding.AttributionScope.UNCLASSIFIED,
+                java.time.Duration.ZERO,
+                new dev.testsleuth.core.finding.TimeSavingEstimate(java.time.Duration.ZERO, java.time.Duration.ZERO),
+                List.of("ExampleTest.java:10"),
+                List.of("Detector: fixed-waits-source."),
+                "Potential wait.",
+                "Measure it first.",
+                "Static-only finding.",
+                "Use runtime diagnosis."
+        );
+
+        new ConsoleSummaryReporter().report(
+                log,
+                TestSleuthMavenConfig.from(true, "findings", 1_000, 5_000, 10, true, false, 250),
+                new MavenTestReportScanner.ScanResult(List.of()),
+                0,
+                MavenTimingSummary.from(java.util.Optional.empty(), List.of()),
+                MavenRuntimeWaitSummary.from(List.of()),
+                java.time.Duration.ZERO,
+                List.of(potential),
+                Path.of("target/testsleuth/index.html"),
+                Path.of("target/testsleuth/events.json"),
+                Path.of("target/testsleuth/findings.json")
+        );
+
+        assertTrue(log.infoLines.stream().anyMatch(line -> line.contains(
+                "Fixed wait in test source: ExampleTest.java:10 (not measured, evidence=POTENTIAL, scope=UNCLASSIFIED)"
         )));
     }
 
@@ -98,6 +139,8 @@ final class ConsoleSummaryReporterTest {
                 FindingCategory.BUILD_RUNNER,
                 FindingSeverity.MEDIUM,
                 Confidence.MEDIUM,
+                dev.testsleuth.core.finding.EvidenceType.MEASURED,
+                dev.testsleuth.core.finding.AttributionScope.DIRECT_TEST_THREAD,
                 Duration.ofMillis(1_500),
                 new TimeSavingEstimate(Duration.ZERO, Duration.ofMillis(1_500)),
                 List.of("ExampleTest.slowExample"),

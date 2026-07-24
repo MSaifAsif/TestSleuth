@@ -71,6 +71,9 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.runtime.waitStacks", defaultValue = "false")
     private boolean runtimeWaitStacksEnabled;
 
+    @Parameter(property = MavenJfrRecording.ENABLED_PROPERTY, defaultValue = "false")
+    private boolean jfrEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
         long reportStartedNanos = System.nanoTime();
@@ -105,6 +108,11 @@ public final class TestSleuthReportMojo extends AbstractMojo {
         MavenRuntimeWaitSummary runtimeWaitSummary = MavenRuntimeWaitSummary.from(detectorEvents);
         List<Finding> findings = detectFindings(config, detectorEvents, runContext);
         java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
+        MavenJfrRecording.Summary jfrSummary = new MavenJfrRecording().summarize(output, jfrEnabled);
+        MavenJfrRecordingReader.Summary jfrEventSummary = new MavenJfrRecordingReader()
+                .summarize(jfrSummary.recordingsDirectory(), jfrEnabled);
+        MavenJfrTestAttribution.Summary jfrAttributionSummary = new MavenJfrTestAttribution()
+                .summarize(jfrSummary.recordingsDirectory(), jfrEnabled);
 
         ReportModel model = new ReportModel(
                 "TestSleuth Report",
@@ -113,6 +121,8 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                         + lifecycleSummary(runTiming)
                         + timingSummary.reportSentence()
                         + reportOverheadSummary(reportPreparationTime)
+                        + jfrSummary.reportSentence()
+                        + jfrEventSummary.reportSentence()
                         + "Showing findings above " + config.slowTestThreshold().toMillis() + " ms.",
                 findings
         );
@@ -126,7 +136,6 @@ public final class TestSleuthReportMojo extends AbstractMojo {
             throw new MojoExecutionException("Failed to write TestSleuth report", e);
         }
         java.time.Duration reportGenerationTime = elapsedSince(reportStartedNanos);
-
         new ConsoleSummaryReporter().report(
                 getLog(),
                 config,
@@ -140,6 +149,12 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 events,
                 findingsFile
         );
+        if (jfrEnabled) {
+            getLog().info(jfrSummary.consoleLine());
+            getLog().info(jfrEventSummary.consoleLine());
+            jfrAttributionSummary.consoleLines().forEach(getLog()::info);
+            new MavenJfrRuntimeCauseExplainer().consoleLines(jfrAttributionSummary).forEach(getLog()::info);
+        }
     }
 
     private TestSleuthMavenConfig createConfig() throws MojoExecutionException {

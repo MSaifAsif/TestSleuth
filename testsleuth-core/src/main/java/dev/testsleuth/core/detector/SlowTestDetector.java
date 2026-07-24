@@ -2,7 +2,9 @@ package dev.testsleuth.core.detector;
 
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.EvidenceType;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.AttributionScope;
 import dev.testsleuth.core.finding.FindingCategory;
 import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
@@ -45,6 +47,8 @@ public final class SlowTestDetector implements TestSleuthDetector {
                 FindingCategory.BUILD_RUNNER,
                 severity(timedTest.duration()),
                 Confidence.MEDIUM,
+                EvidenceType.MEASURED,
+                AttributionScope.DIRECT_TEST_THREAD,
                 timedTest.duration(),
                 new TimeSavingEstimate(Duration.ZERO, timedTest.duration()),
                 List.of(timedTest.subjectId()),

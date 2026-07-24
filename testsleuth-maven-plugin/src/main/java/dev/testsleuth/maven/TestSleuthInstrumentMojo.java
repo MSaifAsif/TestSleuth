@@ -29,6 +29,9 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
     @Parameter(property = "testsleuth.runtime.waitStacks", defaultValue = "false")
     private boolean runtimeWaitStacksEnabled;
 
+    @Parameter(property = MavenJfrRecording.ENABLED_PROPERTY, defaultValue = "false")
+    private boolean jfrEnabled;
+
     @Override
     public void execute() throws MojoExecutionException {
         Build build = project.getBuild();
@@ -41,6 +44,7 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         Path junit4EventsFile = outputDirectory.resolve("junit4-events.json");
         Path runtimeWaitEventsFile = outputDirectory.resolve("runtime-wait-events.json");
         new MavenTestSleuthRunFiles().reset(outputDirectory);
+        boolean effectiveJfrEnabled = prepareJfrRecordings(outputDirectory);
         MavenRunContextFactory runContextFactory = new MavenRunContextFactory();
         TestSleuthRunContext runContext = runContextFactory.create(project, session.getUserProperties());
         String instrumentationVersion = configuredVersion();
@@ -53,7 +57,9 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
                 instrumentationVersion,
                 runContext,
                 runtimeWaitsEnabled,
-                runtimeWaitStacksEnabled
+                runtimeWaitStacksEnabled,
+                effectiveJfrEnabled,
+                new MavenJfrRecording().recordingsDirectory(outputDirectory)
         );
         runContextFactory.write(outputDirectory, runContext);
         new MavenBuildTiming().start(outputDirectory);
@@ -68,8 +74,25 @@ public final class TestSleuthInstrumentMojo extends AbstractMojo {
         if (result.runtimeWaitsEnabled()) {
             getLog().info("Configured runtime wait event output at " + result.runtimeWaitEventsFile());
         }
+        if (result.jfrEnabled()) {
+            getLog().info("Configured bounded JFR recordings at "
+                    + new MavenJfrRecording().recordingsDirectory(outputDirectory));
+        }
         getLog().debug("Configured TestSleuth build run " + runContext.buildRunId()
                 + " for module " + runContext.moduleId());
+    }
+
+    private boolean prepareJfrRecordings(Path outputDirectory) {
+        if (!jfrEnabled) {
+            return false;
+        }
+        try {
+            new MavenJfrRecording().reset(outputDirectory);
+            return true;
+        } catch (IllegalStateException e) {
+            getLog().warn("TestSleuth could not prepare JFR recording output; continuing without JFR: " + e.getMessage());
+            return false;
+        }
     }
 
     private String configuredVersion() throws MojoExecutionException {

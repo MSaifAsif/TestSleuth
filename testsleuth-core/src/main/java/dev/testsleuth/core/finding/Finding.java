@@ -10,6 +10,8 @@ public record Finding(
         FindingCategory category,
         FindingSeverity severity,
         Confidence confidence,
+        EvidenceType evidenceType,
+        AttributionScope attributionScope,
         Duration observedCost,
         TimeSavingEstimate recoverableTime,
         List<String> affectedSubjects,
@@ -25,6 +27,8 @@ public record Finding(
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(severity, "severity");
         Objects.requireNonNull(confidence, "confidence");
+        Objects.requireNonNull(evidenceType, "evidenceType");
+        Objects.requireNonNull(attributionScope, "attributionScope");
         Objects.requireNonNull(observedCost, "observedCost");
         Objects.requireNonNull(recoverableTime, "recoverableTime");
         affectedSubjects = List.copyOf(Objects.requireNonNull(affectedSubjects, "affectedSubjects"));
@@ -45,4 +49,3 @@ public record Finding(
         }
     }
 }
-

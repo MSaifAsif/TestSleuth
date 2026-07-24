@@ -55,7 +55,9 @@ final class MavenFrameworkInitializationFindingsTest {
                 finding.title()
         );
         assertEquals(FindingCategory.SPRING_CONTEXT, finding.category());
-        assertEquals(1_400, finding.observedCost().toMillis());
+        assertEquals(dev.testsleuth.core.finding.EvidenceType.POTENTIAL, finding.evidenceType());
+        assertEquals(dev.testsleuth.core.finding.AttributionScope.UNCLASSIFIED, finding.attributionScope());
+        assertEquals(0, finding.observedCost().toMillis());
         assertEquals(
                 "Observed class duration 1400 ms for dev.testsleuth.ExampleContextTest.",
                 finding.evidence().get(0)

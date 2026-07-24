@@ -42,12 +42,13 @@ final class HtmlReportRendererTest {
 
         assertTrue(html.contains("Run Summary"));
         assertTrue(html.contains("<strong>2</strong>"));
-        assertTrue(html.contains("<strong>2.000 s</strong>"));
+        assertTrue(html.contains("<strong>1.500 s</strong>"));
         assertTrue(html.contains("Top Opportunity"));
         assertTrue(html.contains("Slow observed test: slowOne"));
         assertTrue(html.contains("Category Breakdown"));
         assertTrue(html.contains("BUILD_RUNNER: 1"));
         assertTrue(html.contains("WAITING: 1"));
+        assertTrue(html.contains("Not measured"));
     }
 
     private static Finding finding(String title, FindingCategory category, long observedMillis) {
@@ -57,8 +58,17 @@ final class HtmlReportRendererTest {
                 category,
                 FindingSeverity.MEDIUM,
                 Confidence.MEDIUM,
-                Duration.ofMillis(observedMillis),
-                new TimeSavingEstimate(Duration.ZERO, Duration.ofMillis(observedMillis)),
+                category == FindingCategory.WAITING
+                        ? dev.testsleuth.core.finding.EvidenceType.POTENTIAL
+                        : dev.testsleuth.core.finding.EvidenceType.MEASURED,
+                category == FindingCategory.WAITING
+                        ? dev.testsleuth.core.finding.AttributionScope.UNCLASSIFIED
+                        : dev.testsleuth.core.finding.AttributionScope.DIRECT_TEST_THREAD,
+                category == FindingCategory.WAITING ? Duration.ZERO : Duration.ofMillis(observedMillis),
+                new TimeSavingEstimate(
+                        Duration.ZERO,
+                        category == FindingCategory.WAITING ? Duration.ZERO : Duration.ofMillis(observedMillis)
+                ),
                 List.of("ExampleTest"),
                 List.of("Evidence."),
                 "Root cause.",

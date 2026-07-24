@@ -2,7 +2,9 @@ package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.EvidenceType;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.AttributionScope;
 import dev.testsleuth.core.finding.FindingCategory;
 import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
@@ -46,9 +48,11 @@ final class MavenPollingWaitFindings {
                 "Polling wait in test source: " + location,
                 FindingCategory.WAITING,
                 severity(wait.duration()),
-                Confidence.MEDIUM,
-                wait.duration(),
-                new TimeSavingEstimate(Duration.ZERO, wait.duration()),
+                Confidence.LOW,
+                EvidenceType.POTENTIAL,
+                AttributionScope.UNCLASSIFIED,
+                Duration.ZERO,
+                new TimeSavingEstimate(Duration.ZERO, Duration.ZERO),
                 List.of(location),
                 List.of(
                         wait.expression() + " waited up to " + wait.duration().toMillis()
@@ -62,10 +66,10 @@ final class MavenPollingWaitFindings {
                         "Process IDs: " + runContext.processId() + ".",
                         "Fork numbers: " + runContext.forkNumber() + "."
                 ),
-                "The test source appears to poll with a fixed sleep interval, which can add repeated waiting or hide synchronization gaps.",
+                "The test source appears to poll with a fixed wait interval, but this run did not prove that the loop executed or consumed the configured duration.",
                 "Replace polling sleeps with condition-based waiting that exits as soon as the condition is ready, or use explicit synchronization/fakes.",
-                "Source-only finding. Confirm the loop is actually polling before changing behavior.",
-                "Rerun TestSleuth and confirm the finding disappears or the observed test duration falls."
+                "Potential/static finding. Confirm the loop is actually polling and is a material cost before changing behavior.",
+                "Enable runtime diagnosis in a future JFR-backed run, then confirm the polling wait is observed before making a change."
         );
     }
 

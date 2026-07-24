@@ -16,6 +16,8 @@ final class FindingJsonWriterTest {
                 FindingCategory.BUILD_RUNNER,
                 FindingSeverity.HIGH,
                 Confidence.MEDIUM,
+                EvidenceType.MEASURED,
+                AttributionScope.DIRECT_TEST_THREAD,
                 Duration.ofMillis(1_250),
                 new TimeSavingEstimate(Duration.ofMillis(100), Duration.ofMillis(1_250)),
                 List.of("ExampleTest.slow"),
@@ -31,6 +33,8 @@ final class FindingJsonWriterTest {
         assertTrue(json.contains("\"id\":\"finding-1\""));
         assertTrue(json.contains("\"title\":\"Slow \\\"quoted\\\" test\""));
         assertTrue(json.contains("\"severity\":\"HIGH\""));
+        assertTrue(json.contains("\"evidenceType\":\"MEASURED\""));
+        assertTrue(json.contains("\"attributionScope\":\"DIRECT_TEST_THREAD\""));
         assertTrue(json.contains("\"observedCostMillis\":1250"));
         assertTrue(json.contains("\"recoverableTimeLowerMillis\":100"));
         assertTrue(json.contains("\"affectedSubjects\":[\"ExampleTest.slow\"]"));

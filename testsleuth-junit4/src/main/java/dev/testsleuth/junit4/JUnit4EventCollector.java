@@ -9,6 +9,7 @@ import dev.testsleuth.core.event.SubjectType;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSubjectIdentity;
+import dev.testsleuth.core.jfr.TestSleuthJfrLifecycle;
 import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 
@@ -30,6 +31,7 @@ final class JUnit4EventCollector {
     private final Map<String, Long> startedNanos = new HashMap<>();
     private final Map<String, String> statuses = new HashMap<>();
     private final Map<String, String> throwableTypes = new HashMap<>();
+    private final Map<String, TestSleuthJfrLifecycle.Span> jfrTestSpans = new HashMap<>();
     private final TestSleuthRunContext runContext;
 
     JUnit4EventCollector() {
@@ -47,6 +49,9 @@ final class JUnit4EventCollector {
         }
 
         startedNanos.put(uniqueId(description), System.nanoTime());
+        jfrTestSpans.put(uniqueId(description), TestSleuthJfrLifecycle.beginTest(
+                testIdentity(description), description.getDisplayName(), "junit4"
+        ));
         events.add(toEvent(EventKind.TEST_STARTED, description, Map.of()));
     }
 
@@ -97,6 +102,10 @@ final class JUnit4EventCollector {
         attributes.put("durationMillis", Long.toString(durationMillis));
         Optional.ofNullable(throwableTypes.get(uniqueId(description)))
                 .ifPresent(value -> attributes.put("throwableType", value));
+        TestSleuthJfrLifecycle.Span span = jfrTestSpans.remove(uniqueId(description));
+        if (span != null) {
+            span.finish(attributes.get("status"));
+        }
 
         events.add(toEvent(EventKind.TEST_FINISHED, description, attributes));
     }

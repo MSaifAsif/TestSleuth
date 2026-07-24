@@ -4,7 +4,9 @@ import dev.testsleuth.core.event.EventKind;
 import dev.testsleuth.core.event.RuntimeWaitEventAttributes;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.EvidenceType;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.AttributionScope;
 import dev.testsleuth.core.finding.FindingCategory;
 import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
@@ -50,14 +52,16 @@ final class MavenRuntimeWaitFindings {
                 FindingCategory.WAITING,
                 severity(observation.duration()),
                 Confidence.HIGH,
+                EvidenceType.MEASURED,
+                AttributionScope.FORK_WIDE,
                 observation.duration(),
                 new TimeSavingEstimate(Duration.ZERO, observation.duration()),
                 List.of(observation.operation()),
                 evidence(observation),
                 "A wait operation executed during the test run and consumed observed wall-clock time.",
                 "Replace fixed or timeout-based waiting with condition-based synchronization, callbacks, fakes, or shorter bounded waits.",
-                "Runtime finding. Confirm the wait is not intentionally modeling elapsed time before changing it.",
-                "Rerun TestSleuth and confirm the runtime wait finding disappears or the observed wait duration falls."
+                "Measured runtime finding, but the current collector does not yet associate the event with a specific test window.",
+                "Rerun TestSleuth and confirm the runtime wait duration falls; JFR attribution will later identify the affected test or phase."
         );
     }
 

@@ -46,7 +46,9 @@ final class MavenPollingWaitFindingsTest {
         assertEquals("Polling wait in test source: ExampleTest.java:11", finding.title());
         assertEquals(FindingCategory.WAITING, finding.category());
         assertEquals(FindingSeverity.MEDIUM, finding.severity());
-        assertEquals(250, finding.observedCost().toMillis());
+        assertEquals(dev.testsleuth.core.finding.EvidenceType.POTENTIAL, finding.evidenceType());
+        assertEquals(dev.testsleuth.core.finding.AttributionScope.UNCLASSIFIED, finding.attributionScope());
+        assertEquals(0, finding.observedCost().toMillis());
         assertEquals("tryAcquire(timeout) waited up to 250 ms inside a nearby loop at ExampleTest.java:11.",
                 finding.evidence().get(0));
         assertEquals("Detector: polling-waits-source.", finding.evidence().get(1));

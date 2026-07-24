@@ -20,6 +20,8 @@ public final class FindingJsonWriter {
                 + field("category", finding.category().name())
                 + field("severity", finding.severity().name())
                 + field("confidence", finding.confidence().name())
+                + field("evidenceType", finding.evidenceType().name())
+                + field("attributionScope", finding.attributionScope().name())
                 + numericField("observedCostMillis", finding.observedCost().toMillis())
                 + numericField("recoverableTimeLowerMillis", finding.recoverableTime().lowerBound().toMillis())
                 + numericField("recoverableTimeUpperMillis", finding.recoverableTime().upperBound().toMillis())

@@ -9,6 +9,7 @@ import dev.testsleuth.core.event.SubjectType;
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.event.TestSleuthEvent;
 import dev.testsleuth.core.event.TestSubjectIdentity;
+import dev.testsleuth.core.jfr.TestSleuthJfrLifecycle;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.TestIdentifier;
@@ -21,17 +22,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public final class JUnitLifecycleEventCollector {
-    private final List<TestSleuthEvent> events = new ArrayList<>();
-    private final Map<String, Long> startedNanos = new HashMap<>();
-    private final Map<String, Long> phaseStartedNanos = new HashMap<>();
+    private final List<TestSleuthEvent> events = Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, Long> startedNanos = new ConcurrentHashMap<>();
+    private final Map<String, Long> phaseStartedNanos = new ConcurrentHashMap<>();
+    private final Map<String, TestSleuthJfrLifecycle.Span> jfrTestSpans = new ConcurrentHashMap<>();
+    private final Map<String, TestSleuthJfrLifecycle.Span> jfrPhaseSpans = new ConcurrentHashMap<>();
     private final TestSleuthRunContext runContext;
 
     public JUnitLifecycleEventCollector() {
@@ -63,6 +68,9 @@ public final class JUnitLifecycleEventCollector {
 
         long now = System.nanoTime();
         startedNanos.put(testIdentifier.getUniqueId(), now);
+        jfrTestSpans.put(testIdentifier.getUniqueId(), TestSleuthJfrLifecycle.beginTest(
+                subjectIdentifier(testIdentifier), testIdentifier.getDisplayName(), "junit5"
+        ));
         events.add(toEvent(EventKind.TEST_STARTED, testIdentifier, Map.of()));
     }
 
@@ -84,12 +92,18 @@ public final class JUnitLifecycleEventCollector {
         testExecutionResult.getThrowable()
                 .map(throwable -> throwable.getClass().getName())
                 .ifPresent(value -> attributes.put("throwableType", value));
+        TestSleuthJfrLifecycle.Span span = jfrTestSpans.remove(testIdentifier.getUniqueId());
+        if (span != null) {
+            span.finish(attributes.get("status"));
+        }
 
         events.add(toEvent(EventKind.TEST_FINISHED, testIdentifier, attributes));
     }
 
     public List<TestSleuthEvent> events() {
-        return List.copyOf(events);
+        synchronized (events) {
+            return List.copyOf(events);
+        }
     }
 
     void recordPhaseStarted(
@@ -108,6 +122,12 @@ public final class JUnitLifecycleEventCollector {
         Objects.requireNonNull(testMethod, "testMethod");
 
         phaseStartedNanos.put(phaseKey(phase, uniqueId), System.nanoTime());
+        jfrPhaseSpans.put(phaseKey(phase, uniqueId), TestSleuthJfrLifecycle.beginPhase(
+                phase,
+                subjectIdentifier(displayName, testClass, testMethod),
+                displayName,
+                "junit5"
+        ));
         events.add(toPhaseEvent(kind, phase, uniqueId, displayName, testClass, testMethod, Map.of()));
     }
 
@@ -127,8 +147,13 @@ public final class JUnitLifecycleEventCollector {
         Objects.requireNonNull(testMethod, "testMethod");
 
         long now = System.nanoTime();
-        long started = phaseStartedNanos.getOrDefault(phaseKey(phase, uniqueId), now);
+        String key = phaseKey(phase, uniqueId);
+        long started = phaseStartedNanos.getOrDefault(key, now);
         long durationMillis = Math.max(0, Math.round((now - started) / 1_000_000.0));
+        TestSleuthJfrLifecycle.Span span = jfrPhaseSpans.remove(key);
+        if (span != null) {
+            span.finish("completed");
+        }
         events.add(toPhaseEvent(
                 kind,
                 phase,
@@ -164,7 +189,7 @@ public final class JUnitLifecycleEventCollector {
                 eventsFile,
                 StandardCharsets.UTF_8
         )));
-        merged.addAll(events);
+        merged.addAll(events());
         return List.copyOf(merged);
     }
 

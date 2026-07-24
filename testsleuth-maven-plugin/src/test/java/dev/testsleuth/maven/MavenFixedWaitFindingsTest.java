@@ -42,7 +42,9 @@ final class MavenFixedWaitFindingsTest {
         assertEquals("Fixed wait in test source: ExampleTest.java:12", largest.title());
         assertEquals(FindingCategory.WAITING, largest.category());
         assertEquals(FindingSeverity.HIGH, largest.severity());
-        assertEquals(2_000, largest.observedCost().toMillis());
+        assertEquals(dev.testsleuth.core.finding.EvidenceType.POTENTIAL, largest.evidenceType());
+        assertEquals(dev.testsleuth.core.finding.AttributionScope.UNCLASSIFIED, largest.attributionScope());
+        assertEquals(0, largest.observedCost().toMillis());
         assertEquals("await(timeout) waited up to 2000 ms at ExampleTest.java:12.", largest.evidence().get(0));
         assertEquals("Detector: fixed-waits-source.", largest.evidence().get(1));
         assertEquals("Module: dev.testsleuth:sample.", largest.evidence().get(2));

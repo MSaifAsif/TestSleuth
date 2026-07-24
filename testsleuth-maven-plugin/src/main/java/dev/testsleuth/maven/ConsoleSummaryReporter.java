@@ -67,9 +67,11 @@ final class ConsoleSummaryReporter {
         if (config.consoleDetail() == TestSleuthMavenConfig.ConsoleDetail.FINDINGS) {
             findings.stream()
                     .sorted(Comparator.comparing(Finding::observedCost).reversed())
-                    .forEach(finding -> log.info("[TestSleuth] - " + finding.severity()
+                            .forEach(finding -> log.info("[TestSleuth] - " + finding.severity()
                             + " " + finding.title()
-                            + " (" + finding.observedCost().toMillis() + " ms"
+                            + " (" + displayCost(finding)
+                            + ", evidence=" + finding.evidenceType()
+                            + ", scope=" + finding.attributionScope()
                             + contextSuffix(finding)
                             + ")"));
         }
@@ -91,6 +93,13 @@ final class ConsoleSummaryReporter {
         appendContext(suffix, "runner", testRunner);
         appendContext(suffix, "collectors", collectors);
         return suffix.toString();
+    }
+
+    private static String displayCost(Finding finding) {
+        if (finding.evidenceType() == dev.testsleuth.core.finding.EvidenceType.POTENTIAL) {
+            return "not measured";
+        }
+        return finding.observedCost().toMillis() + " ms";
     }
 
     private static String timingBucketsLine(MavenTimingSummary timingSummary, java.time.Duration reportGenerationTime) {

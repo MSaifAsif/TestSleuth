@@ -2,7 +2,9 @@ package dev.testsleuth.maven;
 
 import dev.testsleuth.core.event.TestSleuthRunContext;
 import dev.testsleuth.core.finding.Confidence;
+import dev.testsleuth.core.finding.EvidenceType;
 import dev.testsleuth.core.finding.Finding;
+import dev.testsleuth.core.finding.AttributionScope;
 import dev.testsleuth.core.finding.FindingCategory;
 import dev.testsleuth.core.finding.FindingId;
 import dev.testsleuth.core.finding.FindingSeverity;
@@ -45,9 +47,11 @@ final class MavenFixedWaitFindings {
                 "Fixed wait in test source: " + location,
                 FindingCategory.WAITING,
                 severity(wait.duration()),
-                Confidence.HIGH,
-                wait.duration(),
-                new TimeSavingEstimate(Duration.ZERO, wait.duration()),
+                Confidence.LOW,
+                EvidenceType.POTENTIAL,
+                AttributionScope.UNCLASSIFIED,
+                Duration.ZERO,
+                new TimeSavingEstimate(Duration.ZERO, Duration.ZERO),
                 List.of(location),
                 List.of(
                         wait.expression() + " waited up to " + wait.duration().toMillis() + " ms at " + location + ".",
@@ -60,10 +64,10 @@ final class MavenFixedWaitFindings {
                         "Process IDs: " + runContext.processId() + ".",
                         "Fork numbers: " + runContext.forkNumber() + "."
                 ),
-                "The test source contains a fixed sleep, which usually waits the full duration even when the condition is ready earlier.",
+                "The test source contains a fixed wait, but this run did not prove that the code executed or consumed the configured duration.",
                 "Replace fixed sleeps with condition-based waiting, callbacks, fakes, or explicit synchronization.",
-                "Source-only finding. Confirm the wait is not intentionally modeling elapsed time before changing it.",
-                "Rerun TestSleuth and confirm the finding disappears or the observed test duration falls."
+                "Potential/static finding. Confirm the wait executes and is a material cost before changing it.",
+                "Enable runtime diagnosis in a future JFR-backed run, then confirm the wait is observed before making a change."
         );
     }
 

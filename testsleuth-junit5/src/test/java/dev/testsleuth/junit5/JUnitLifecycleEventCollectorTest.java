@@ -14,7 +14,11 @@ import org.junit.platform.launcher.TestIdentifier;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -132,6 +136,33 @@ final class JUnitLifecycleEventCollectorTest {
         assertEquals(4, events.size());
         assertEquals("dev.testsleuth.ExampleTest.firstTest", events.get(1).attributes().get("testIdentity"));
         assertEquals("dev.testsleuth.ExampleTest.secondTest", events.get(3).attributes().get("testIdentity"));
+    }
+
+    @Test
+    void recordsConcurrentTestCallbacksWithoutDroppingEvents() throws Exception {
+        JUnitLifecycleEventCollector collector = new JUnitLifecycleEventCollector();
+        List<Callable<Void>> callbacks = new ArrayList<>();
+        for (int index = 0; index < 16; index++) {
+            int testNumber = index;
+            callbacks.add(() -> {
+                TestIdentifier test = testIdentifier("parallel-" + testNumber, "passes");
+                collector.recordStarted(test);
+                collector.recordFinished(test, TestExecutionResult.successful());
+                return null;
+            });
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        try {
+            executor.invokeAll(callbacks);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        List<TestSleuthEvent> events = collector.events();
+        assertEquals(32, events.size());
+        assertEquals(16, events.stream().filter(event -> event.kind() == EventKind.TEST_STARTED).count());
+        assertEquals(16, events.stream().filter(event -> event.kind() == EventKind.TEST_FINISHED).count());
     }
 
     private static TestIdentifier testIdentifier(String uniqueId, String displayName) {

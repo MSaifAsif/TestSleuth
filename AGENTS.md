@@ -4,9 +4,10 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 
 ## Current Direction
 
-- Focus on Maven Phase 2 only for now.
-- Gradle remains a product roadmap item, but do not start Gradle work unless explicitly asked.
-- The current product goal is a Maven plugin that observes test runs, aggregates results, and produces useful local and CI-friendly reports.
+- Align with `project-management/Roadmapv2.md`: runtime-first diagnosis, with Java Flight Recorder as the primary deep-diagnosis engine.
+- Continue Maven-first implementation for now. Gradle remains a product roadmap item, but do not start Gradle work unless explicitly asked.
+- The current product goal is a Maven plugin that observes test runs, records runtime evidence, attributes costs to tests/lifecycle phases, and produces useful local and CI-friendly reports.
+- Source scanning is enrichment/remediation support. Do not treat source-only findings as measured runtime diagnoses.
 - Prefer moving the Maven plugin toward normal lifecycle usage over adding one-off manual commands.
 
 ## Current Capabilities
@@ -28,6 +29,8 @@ This repository is TestSleuth, a local-first diagnostic tool for slow Java test 
 - Slow-test detector using joined JUnit lifecycle and Maven XML events.
 - Opt-in fixed-wait source detector for direct `Thread.sleep(...)` calls.
 - Opt-in polling-wait source detector for direct `Thread.sleep(...)` calls inside nearby loops.
+- Runtime wait event contract and direct runtime wait collector API.
+- Opt-in Maven runtime wait event-file wiring and runtime wait findings for direct collector events.
 - Opt-in framework-initialization candidate detector that correlates application-context source indicators with observed class duration.
 - Maven XML report events include Surefire/Failsafe runner metadata and configured fork settings when available.
 - Maven reports include an observed lifecycle window from `testsleuth:instrument` to `testsleuth:report`.
@@ -96,9 +99,10 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 ## Engineering Rules
 
 - Keep changes aligned with the existing Maven-first architecture.
+- Keep changes aligned with the Version 2 runtime-first/JFR-first architecture.
 - Keep detector logic testable without rerunning a real user suite.
 - Prefer normalized event data and reusable core models over Maven-only shortcuts.
-- Keep source scanning opt-in unless the cost is clearly low and documented.
+- Keep source scanning opt-in unless the cost is clearly low and documented. Label source-only findings as potential/static until runtime evidence supports them.
 - Keep console output brief and useful for CI logs.
 - Update `CHANGELOG.md` for user-visible fixes, features, behavior changes, and notable docs changes.
 - Keep README aligned when architecture, usage, or repository layout changes.
@@ -108,9 +112,11 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 
 ## Current Next Steps
 
-1. Add richer source detectors for polling libraries and framework-specific waits.
-2. Improve wall-clock/build-phase timing coverage with explicit discovery buckets and richer framework-initialization events.
-3. Add real Spring Boot collector/sample coverage when external dependencies are acceptable.
+1. Add Version 2 evidence type, attribution scope, and confidence fields to findings.
+2. Add normalized JFR event models and a Maven JFR recording plan for Surefire/Failsafe forks.
+3. Implement one JFR recording per Maven Surefire fork, preserving user JVM arguments and reporting recording status/overhead.
+4. Implement one JFR recording per Maven Failsafe fork and aggregate recording discovery.
+5. Parse recordings and join sequential runtime events to JUnit/Maven test windows.
 
 ## Verification Expectations
 

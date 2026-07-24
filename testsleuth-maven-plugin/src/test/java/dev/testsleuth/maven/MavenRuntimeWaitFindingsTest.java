@@ -49,6 +49,8 @@ final class MavenRuntimeWaitFindingsTest {
         assertEquals("Runtime wait observed: LockSupport.parkNanos", slowest.title());
         assertEquals(FindingCategory.WAITING, slowest.category());
         assertEquals(FindingSeverity.HIGH, slowest.severity());
+        assertEquals(dev.testsleuth.core.finding.EvidenceType.MEASURED, slowest.evidenceType());
+        assertEquals(dev.testsleuth.core.finding.AttributionScope.FORK_WIDE, slowest.attributionScope());
         assertEquals(1_250, slowest.observedCost().toMillis());
         assertEquals("LockSupport.parkNanos observed 1250 ms at runtime.", slowest.evidence().get(0));
         assertEquals("Configured timeout: 1250 ms.", slowest.evidence().get(1));

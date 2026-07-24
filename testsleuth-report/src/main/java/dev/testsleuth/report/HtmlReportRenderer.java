@@ -31,12 +31,16 @@ public final class HtmlReportRenderer {
         if (report.findings().isEmpty()) {
             html.append("<p class=\"muted\">No findings yet. TestSleuth collected events, but no detector produced a finding for this run.</p>");
         }
-        html.append("<table><thead><tr><th>Severity</th><th>Confidence</th><th>Finding</th><th>Observed Cost</th><th>Evidence</th><th>Action</th></tr></thead><tbody>");
+        html.append("<table><thead><tr><th>Severity</th><th>Evidence</th><th>Attribution</th><th>Confidence</th><th>Finding</th><th>Observed Cost</th><th>Details</th><th>Action</th></tr></thead><tbody>");
 
         report.findings().stream()
                 .sorted(Comparator.comparing(Finding::severity).reversed())
                 .forEach(finding -> html.append("<tr><td>")
                         .append(escape(finding.severity().name()))
+                        .append("</td><td>")
+                        .append(escape(finding.evidenceType().name()))
+                        .append("</td><td>")
+                        .append(escape(finding.attributionScope().name()))
                         .append("</td><td>")
                         .append(escape(finding.confidence().name()))
                         .append("</td><td>")
@@ -45,7 +49,7 @@ public final class HtmlReportRenderer {
                         .append(escape(finding.rootCause()))
                         .append("</div>")
                         .append("</td><td>")
-                        .append(escape(formatDuration(finding.observedCost())))
+                        .append(escape(formatObservedCost(finding)))
                         .append("</td><td>")
                         .append(renderEvidence(finding))
                         .append("</td><td>")
@@ -130,6 +134,13 @@ public final class HtmlReportRenderer {
             return String.format(Locale.ROOT, "%.3f s", millis / 1_000.0);
         }
         return millis + " ms";
+    }
+
+    private static String formatObservedCost(Finding finding) {
+        if (finding.evidenceType() == dev.testsleuth.core.finding.EvidenceType.POTENTIAL) {
+            return "Not measured";
+        }
+        return formatDuration(finding.observedCost());
     }
 
     public record ReportModel(String title, String summary, List<Finding> findings) {

@@ -192,11 +192,69 @@ final class MavenTestInstrumentationTest {
         assertEquals("com.example.ExistingListener," + TestSleuthJUnit4RunListener.class.getName(), configuredListener);
     }
 
+    @Test
+    void appendsBoundedJfrRecordingArgumentsWithoutReplacingExistingArgLine() {
+        MavenProject project = new MavenProject(new Model());
+        Build build = new Build();
+        Plugin surefire = new Plugin();
+        surefire.setGroupId("org.apache.maven.plugins");
+        surefire.setArtifactId("maven-surefire-plugin");
+        Xpp3Dom configuration = new Xpp3Dom("configuration");
+        Xpp3Dom argLine = new Xpp3Dom("argLine");
+        argLine.setValue("-Xmx512m -Dexisting=true");
+        configuration.addChild(argLine);
+        surefire.setConfiguration(configuration);
+        build.addPlugin(surefire);
+        project.setBuild(build);
+
+        Properties userProperties = new Properties();
+        userProperties.setProperty("argLine", "-Duser.supplied=true");
+        MavenTestInstrumentation.Result result = apply(
+                project,
+                userProperties,
+                false,
+                false,
+                true
+        );
+
+        assertTrue(result.jfrEnabled());
+        assertEquals(
+                "-Duser.supplied=true "
+                        + new MavenJfrRecording().recordingArgumentForProcess(Path.of("target/testsleuth/jfr")),
+                userProperties.getProperty("argLine")
+        );
+        assertEquals(
+                "-Xmx512m -Dexisting=true "
+                        + new MavenJfrRecording().recordingArgument(Path.of("target/testsleuth/jfr"), "surefire"),
+                configuration.getChild("argLine").getValue()
+        );
+
+        Plugin failsafe = project.getBuild().getPluginsAsMap().get("org.apache.maven.plugins:maven-failsafe-plugin");
+        Xpp3Dom failsafeConfiguration = (Xpp3Dom) failsafe.getConfiguration();
+        assertEquals(
+                new MavenJfrRecording().recordingArgument(Path.of("target/testsleuth/jfr"), "failsafe"),
+                failsafeConfiguration.getChild("argLine").getValue()
+        );
+
+        apply(project, new Properties(), false, false, true);
+        assertEquals(1, occurrences(configuration.getChild("argLine").getValue(), "-XX:StartFlightRecording="));
+    }
+
     private static MavenTestInstrumentation.Result apply(
             MavenProject project,
             Properties userProperties,
             boolean runtimeWaitsEnabled,
             boolean runtimeWaitStacksEnabled
+    ) {
+        return apply(project, userProperties, runtimeWaitsEnabled, runtimeWaitStacksEnabled, false);
+    }
+
+    private static MavenTestInstrumentation.Result apply(
+            MavenProject project,
+            Properties userProperties,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled,
+            boolean jfrEnabled
     ) {
         return apply(
                 project,
@@ -206,7 +264,8 @@ final class MavenTestInstrumentationTest {
                 Path.of("target/testsleuth/runtime-wait-events.json"),
                 runContext(),
                 runtimeWaitsEnabled,
-                runtimeWaitStacksEnabled
+                runtimeWaitStacksEnabled,
+                jfrEnabled
         );
     }
 
@@ -220,6 +279,30 @@ final class MavenTestInstrumentationTest {
             boolean runtimeWaitsEnabled,
             boolean runtimeWaitStacksEnabled
     ) {
+        return apply(
+                project,
+                userProperties,
+                junit5EventsFile,
+                junit4EventsFile,
+                runtimeWaitEventsFile,
+                runContext,
+                runtimeWaitsEnabled,
+                runtimeWaitStacksEnabled,
+                false
+        );
+    }
+
+    private static MavenTestInstrumentation.Result apply(
+            MavenProject project,
+            Properties userProperties,
+            Path junit5EventsFile,
+            Path junit4EventsFile,
+            Path runtimeWaitEventsFile,
+            TestSleuthRunContext runContext,
+            boolean runtimeWaitsEnabled,
+            boolean runtimeWaitStacksEnabled,
+            boolean jfrEnabled
+    ) {
         return new MavenTestInstrumentation().apply(
                 project,
                 userProperties,
@@ -229,8 +312,14 @@ final class MavenTestInstrumentationTest {
                 "0.1.0-SNAPSHOT",
                 runContext,
                 runtimeWaitsEnabled,
-                runtimeWaitStacksEnabled
+                runtimeWaitStacksEnabled,
+                jfrEnabled,
+                Path.of("target/testsleuth/jfr")
         );
+    }
+
+    private static int occurrences(String value, String token) {
+        return value.split(java.util.regex.Pattern.quote(token), -1).length - 1;
     }
 
     private static void assertInjectedDependency(MavenProject project, String artifactId) {
