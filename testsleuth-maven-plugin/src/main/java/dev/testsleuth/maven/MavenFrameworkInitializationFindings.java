@@ -50,8 +50,17 @@ final class MavenFrameworkInitializationFindings {
     }
 
     List<Finding> detect(List<String> testSourceRoots, List<TestSleuthEvent> events) {
+        return detect(testSourceRoots, events, java.util.Set.of());
+    }
+
+    List<Finding> detect(
+            List<String> testSourceRoots,
+            List<TestSleuthEvent> events,
+            java.util.Set<String> runtimeBackedClassNames
+    ) {
         Objects.requireNonNull(testSourceRoots, "testSourceRoots");
         Objects.requireNonNull(events, "events");
+        Objects.requireNonNull(runtimeBackedClassNames, "runtimeBackedClassNames");
         if (!config.frameworkInitializationDetectorEnabled() || config.maxFindings() == 0) {
             return List.of();
         }
@@ -66,6 +75,7 @@ final class MavenFrameworkInitializationFindings {
                 .map(Path::of)
                 .filter(Files::isDirectory)
                 .flatMap(root -> scanRoot(root, classDurations))
+                .filter(candidate -> !runtimeBackedClassNames.contains(candidate.className()))
                 .filter(candidate -> candidate.duration().compareTo(config.slowTestThreshold()) >= 0)
                 .sorted(Comparator.comparing(FrameworkCandidate::duration).reversed()
                         .thenComparing(candidate -> candidate.source().toString()))
@@ -230,5 +240,43 @@ final class MavenFrameworkInitializationFindings {
     }
 
     private record FrameworkCandidate(Path source, String className, Duration duration, List<String> indicators) {
+    }
+
+    static List<FrameworkSource> frameworkSources(List<String> testSourceRoots) {
+        Objects.requireNonNull(testSourceRoots, "testSourceRoots");
+        return testSourceRoots.stream()
+                .filter(root -> root != null && !root.isBlank())
+                .map(Path::of)
+                .filter(Files::isDirectory)
+                .flatMap(MavenFrameworkInitializationFindings::scanFrameworkSources)
+                .toList();
+    }
+
+    private static Stream<FrameworkSource> scanFrameworkSources(Path root) {
+        try {
+            return Files.walk(root)
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".java"))
+                    .flatMap(path -> frameworkSource(root, path).stream());
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to scan test source root " + root, e);
+        }
+    }
+
+    private static Optional<FrameworkSource> frameworkSource(Path root, Path source) {
+        try {
+            List<String> lines = Files.readAllLines(source, StandardCharsets.UTF_8);
+            Optional<String> className = className(lines);
+            LinkedHashSet<String> indicators = indicators(lines);
+            if (className.isEmpty() || indicators.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(new FrameworkSource(root.relativize(source), className.orElseThrow(), List.copyOf(indicators)));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to scan test source file " + source, e);
+        }
+    }
+
+    record FrameworkSource(Path source, String className, List<String> indicators) {
     }
 }

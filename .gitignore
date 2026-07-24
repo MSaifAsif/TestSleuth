@@ -1,5 +1,7 @@
 .DS_Store
-.idea/
+.idea/*
+!.idea/codeStyles/
+!.idea/codeStyles/Project.xml
 .vscode/
 *.iml
 

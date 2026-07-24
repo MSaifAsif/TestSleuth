@@ -104,7 +104,7 @@ final class MavenJfrRecordingReader {
                 return "";
             }
             return "Parsed " + parsedRecordings + " of " + recordingCount + " JFR recordings ("
-                    + totalEvents + " events); runtime event attribution is pending. ";
+                    + totalEvents + " events); attributed JFR findings are included when evidence is available. ";
         }
     }
 }

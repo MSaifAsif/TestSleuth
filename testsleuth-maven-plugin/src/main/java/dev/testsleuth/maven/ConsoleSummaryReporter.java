@@ -53,7 +53,7 @@ final class ConsoleSummaryReporter {
                     + runtimeWaitSummary.collectorOverhead().toNanos() + " ns");
         }
         log.info("[TestSleuth] Report overhead: " + reportGenerationTime.toMillis() + " ms");
-        log.info("[TestSleuth] Findings: " + findings.size() + " above configured thresholds");
+        log.info("[TestSleuth] Findings: " + findings.size() + " reported");
         log.info("[TestSleuth] Slow-test threshold: " + config.slowTestThreshold().toMillis() + " ms");
 
         findings.stream()
@@ -98,6 +98,10 @@ final class ConsoleSummaryReporter {
     private static String displayCost(Finding finding) {
         if (finding.evidenceType() == dev.testsleuth.core.finding.EvidenceType.POTENTIAL) {
             return "not measured";
+        }
+        if (finding.evidenceType() == dev.testsleuth.core.finding.EvidenceType.CORRELATED
+                && finding.observedCost().isZero()) {
+            return "not duration-measured";
         }
         return finding.observedCost().toMillis() + " ms";
     }

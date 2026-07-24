@@ -142,7 +142,7 @@ final class MavenJfrRecording {
                 return "JFR capture enabled, but no recordings were found. ";
             }
             return "JFR capture retained " + recordingCount + " raw recordings ("
-                    + recordingBytes + " bytes); parsing and test-level attribution are pending. ";
+                    + recordingBytes + " bytes). ";
         }
     }
 }

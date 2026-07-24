@@ -8,8 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- README guidance for interpreting TestSleuth diagnostic data, evidence quality, attribution scopes, non-additive repetition roll-ups, and AI-assisted triage.
+- Direct JFR duration events at the same user-code stack are now grouped across multiple tests into measured repeated-operation findings with total duration, longest occurrence, affected tests, and non-additive accounting guidance.
+- Framework-initialization detection can now combine framework-indicator source with directly attributed JFR duration at the matching user-code stack. The report emits one `INFERRED` finding with measured observed cost and avoids a duplicate source-only candidate for that class.
 - JFR attribution now reports up to two direct same-thread CPU and allocation samples as explicitly non-duration `JFR signal` evidence after ranked measured causes, including the sampled user-code location when available.
 - JFR reporting now explains directly attributed class loading as warm-up work and reports overlapping garbage-collection pause time as shared JVM evidence without charging a test.
+- JFR runtime causes, samples, and garbage-collection evidence now appear as scoped findings in `findings.json` and the HTML report, with `MEASURED` versus `CORRELATED` evidence labels.
 - Direct JFR cause explanations now include a user-code `class.method:line` location when the recorded runtime event has stack-trace evidence.
 - JFR reports now emit up to five ranked, directly measured runtime-cause explanations with targeted actions for fixed waits, parked/polling waits, socket I/O, lock contention, and file I/O.
 - JFR console output now reports unowned candidate events as asynchronous, shared-concurrent, or unclassified evidence without charging them to a test.
@@ -82,6 +86,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- README now presents JFR as TestSleuth's current optional deep-runtime measurement backend, while positioning TestSleuth findings as a backend-independent combination of lifecycle, runtime, and source/configuration evidence.
 - Consolidated architecture documentation into the root `README.md` and removed the standalone implementation tracker.
 
 ### Fixed

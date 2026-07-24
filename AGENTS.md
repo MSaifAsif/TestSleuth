@@ -98,6 +98,9 @@ In sandboxed Codex sessions, `mvn install` may need approval because it writes t
 
 ## Engineering Rules
 
+- Format Java source with IntelliJ IDEA before verification. `.idea/codeStyles/Project.xml` is the shared project code-style scheme and `.editorconfig` is its portable baseline: four-space indentation, eight-space continuation indentation, LF line endings, trailing-whitespace removal, and a 120-column right margin.
+- Favor static imports for named constants when they improve readability. Do not use wildcard static imports, and keep method calls qualified unless a local convention makes a static import clearer.
+- Keep exactly one top-level class, record, interface, or enum declaration in each `.java` file. Name the file after that declaration; nested implementation details remain scoped to their owning type.
 - Keep changes aligned with the existing Maven-first architecture.
 - Keep changes aligned with the Version 2 runtime-first/JFR-first architecture.
 - Keep detector logic testable without rerunning a real user suite.

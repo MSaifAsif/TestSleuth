@@ -29,7 +29,7 @@ final class MavenJfrRecordingTest {
         assertEquals(5, summary.recordingBytes());
         assertEquals(directory, summary.recordingsDirectory());
         assertTrue(summary.consoleLine().contains("2 files, 5 bytes"));
-        assertEquals("JFR capture retained 2 raw recordings (5 bytes); parsing and test-level attribution are pending. ",
+        assertEquals("JFR capture retained 2 raw recordings (5 bytes). ",
                 summary.reportSentence());
     }
 

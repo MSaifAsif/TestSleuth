@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -74,6 +75,19 @@ final class MavenFrameworkInitializationFindingsTest {
 
         List<Finding> findings = new MavenFrameworkInitializationFindings(config, runContext())
                 .detect(List.of(tempDir.toString()), List.of(event(900)));
+
+        assertEquals(0, findings.size());
+    }
+
+    @Test
+    void doesNotDuplicateAFrameworkClassWithRuntimeBackedEvidence() throws IOException {
+        writeSampleSource();
+        TestSleuthMavenConfig config = TestSleuthMavenConfig.from(
+                true, "summary", 1_000, 5_000, 10, true, false, 250, false, 100, true
+        );
+
+        List<Finding> findings = new MavenFrameworkInitializationFindings(config, runContext())
+                .detect(List.of(tempDir.toString()), List.of(event(1_400)), Set.of("dev.testsleuth.ExampleContextTest"));
 
         assertEquals(0, findings.size());
     }

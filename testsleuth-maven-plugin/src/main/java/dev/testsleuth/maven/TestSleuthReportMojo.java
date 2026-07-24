@@ -106,13 +106,25 @@ public final class TestSleuthReportMojo extends AbstractMojo {
                 detectorEvents
         );
         MavenRuntimeWaitSummary runtimeWaitSummary = MavenRuntimeWaitSummary.from(detectorEvents);
-        List<Finding> findings = detectFindings(config, detectorEvents, runContext);
         java.time.Duration reportPreparationTime = elapsedSince(reportStartedNanos);
         MavenJfrRecording.Summary jfrSummary = new MavenJfrRecording().summarize(output, jfrEnabled);
         MavenJfrRecordingReader.Summary jfrEventSummary = new MavenJfrRecordingReader()
                 .summarize(jfrSummary.recordingsDirectory(), jfrEnabled);
         MavenJfrTestAttribution.Summary jfrAttributionSummary = new MavenJfrTestAttribution()
                 .summarize(jfrSummary.recordingsDirectory(), jfrEnabled);
+        MavenJfrFrameworkInitializationFindings.Result jfrFrameworkFindings = MavenJfrFrameworkInitializationFindings.Result.empty();
+        if (jfrEnabled) {
+            jfrFrameworkFindings = new MavenJfrFrameworkInitializationFindings(config, runContext)
+                    .detect(project.getTestCompileSourceRoots(), jfrAttributionSummary);
+        }
+        List<Finding> findings = new java.util.ArrayList<>(detectFindings(
+                config, detectorEvents, runContext, jfrFrameworkFindings.runtimeBackedClassNames()
+        ));
+        if (jfrEnabled) {
+            findings.addAll(new MavenJfrRuntimeFindings(config).detect(jfrAttributionSummary));
+            findings.addAll(new MavenJfrRepetitionFindings(config).detect(jfrAttributionSummary));
+            findings.addAll(jfrFrameworkFindings.findings());
+        }
 
         ReportModel model = new ReportModel(
                 "TestSleuth Report",
@@ -193,14 +205,15 @@ public final class TestSleuthReportMojo extends AbstractMojo {
     private List<Finding> detectFindings(
             TestSleuthMavenConfig config,
             List<TestSleuthEvent> events,
-            TestSleuthRunContext runContext
+            TestSleuthRunContext runContext,
+            java.util.Set<String> runtimeBackedFrameworkClasses
     ) {
         List<Finding> findings = new java.util.ArrayList<>(new MavenTimingFindings(config).detect(events));
         findings.addAll(new MavenRuntimeWaitFindings(config).detect(events));
         findings.addAll(new MavenFixedWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
         findings.addAll(new MavenPollingWaitFindings(config, runContext).detect(project.getTestCompileSourceRoots()));
         findings.addAll(new MavenFrameworkInitializationFindings(config, runContext)
-                .detect(project.getTestCompileSourceRoots(), events));
+                .detect(project.getTestCompileSourceRoots(), events, runtimeBackedFrameworkClasses));
         return findings;
     }
 
