@@ -89,4 +89,23 @@ final class MavenJfrRuntimeCauseExplainerTest {
         assertTrue(lines.stream().anyMatch(line -> line.contains("fixed wait")));
         assertTrue(lines.stream().anyMatch(line -> line.contains("CPU activity")));
     }
+
+    @Test
+    void explainsDirectClassLoadingAsWarmUpWork() {
+        MavenJfrTestAttribution.TestEvidence evidence = new MavenJfrTestAttribution.TestEvidence(
+                "example.SampleTest.firstTest",
+                Map.of("ClassLoad", 2L),
+                Map.of("ClassLoad", Duration.ofMillis(120)),
+                Map.of("ClassLoad", "example.ApplicationBootstrap.start:20"),
+                Duration.ofMillis(120)
+        );
+        MavenJfrTestAttribution.Summary summary = new MavenJfrTestAttribution.Summary(
+                1, 2, 0, List.of(evidence), List.of(), List.of(), List.of(), List.of()
+        );
+
+        List<String> lines = new MavenJfrRuntimeCauseExplainer().consoleLines(summary);
+
+        assertTrue(lines.get(0).contains("class loading and warm-up"));
+        assertTrue(lines.get(0).contains("first-test versus steady-state"));
+    }
 }

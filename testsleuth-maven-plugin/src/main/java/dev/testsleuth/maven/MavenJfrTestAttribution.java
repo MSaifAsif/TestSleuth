@@ -27,7 +27,11 @@ final class MavenJfrTestAttribution {
             "jdk.SocketRead", "SocketRead",
             "jdk.SocketWrite", "SocketWrite",
             "jdk.FileRead", "FileRead",
-            "jdk.FileWrite", "FileWrite"
+            "jdk.FileWrite", "FileWrite",
+            "jdk.ClassLoad", "ClassLoad"
+    );
+    private static final Map<String, String> SHARED_JVM_EVENT_FAMILIES = Map.of(
+            "jdk.GarbageCollection", "GarbageCollection"
     );
     private static final Map<String, String> SAMPLED_EVENT_FAMILIES = Map.of(
             "jdk.ExecutionSample", "ExecutionSample",
@@ -43,12 +47,13 @@ final class MavenJfrTestAttribution {
         List<PhaseWindow> phaseWindows = new ArrayList<>();
         List<RuntimeEvent> runtimeEvents = new ArrayList<>();
         List<SampleEvent> sampleEvents = new ArrayList<>();
+        List<SharedRuntimeEvent> sharedRuntimeEvents = new ArrayList<>();
         try (var paths = Files.list(recordingsDirectory)) {
             for (Path recording : paths.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".jfr"))
                     .sorted()
                     .toList()) {
-                readRecording(recording, testWindows, phaseWindows, runtimeEvents, sampleEvents);
+                readRecording(recording, testWindows, phaseWindows, runtimeEvents, sampleEvents, sharedRuntimeEvents);
             }
         } catch (IOException ignored) {
             return Summary.empty();
@@ -102,6 +107,10 @@ final class MavenJfrTestAttribution {
                 }
             }
         }
+        for (SharedRuntimeEvent event : sharedRuntimeEvents) {
+            UnassignedScope scope = sharedJvmScope(testWindows, event);
+            unassignedEvidence.computeIfAbsent(scope, MutableUnassignedEvidence::new).add(event.family, event.duration);
+        }
         List<TestEvidence> evidence = evidenceByTest.values().stream()
                 .map(MutableEvidence::toEvidence)
                 .sorted(Comparator.comparing(TestEvidence::directDuration).reversed())
@@ -147,6 +156,27 @@ final class MavenJfrTestAttribution {
         return UnassignedScope.SHARED_CONCURRENT;
     }
 
+    static UnassignedScope sharedJvmScopeForActiveTests(int activeTestCount) {
+        if (activeTestCount < 0) {
+            throw new IllegalArgumentException("activeTestCount must not be negative");
+        }
+        return activeTestCount == 0 ? UnassignedScope.UNCLASSIFIED : UnassignedScope.SHARED_JVM;
+    }
+
+    private static UnassignedScope sharedJvmScope(List<TestWindow> windows, SharedRuntimeEvent event) {
+        int activeTests = 0;
+        for (TestWindow window : windows) {
+            if (window.recording.equals(event.recording) && windowsOverlap(window.start, window.end, event.start, event.end())) {
+                activeTests++;
+            }
+        }
+        return sharedJvmScopeForActiveTests(activeTests);
+    }
+
+    private static boolean windowsOverlap(Instant firstStart, Instant firstEnd, Instant secondStart, Instant secondEnd) {
+        return !firstEnd.isBefore(secondStart) && !secondEnd.isBefore(firstStart);
+    }
+
     private static PhaseWindow containingPhaseWindow(List<PhaseWindow> windows, RuntimeEvent runtimeEvent) {
         for (PhaseWindow window : windows) {
             if (belongsToWindow(window.recording, window.threadId, window.start, window.end,
@@ -187,12 +217,13 @@ final class MavenJfrTestAttribution {
             List<TestWindow> testWindows,
             List<PhaseWindow> phaseWindows,
             List<RuntimeEvent> runtimeEvents,
-            List<SampleEvent> sampleEvents
+            List<SampleEvent> sampleEvents,
+            List<SharedRuntimeEvent> sharedRuntimeEvents
     ) {
         try (RecordingFile file = new RecordingFile(recording)) {
             while (file.hasMoreEvents()) {
                 try {
-                    readEvent(file.readEvent(), recording, testWindows, phaseWindows, runtimeEvents, sampleEvents);
+                    readEvent(file.readEvent(), recording, testWindows, phaseWindows, runtimeEvents, sampleEvents, sharedRuntimeEvents);
                 } catch (RuntimeException ignored) {
                     // Individual JFR event schemas may vary by JDK; retain the rest of the recording.
                 }
@@ -208,7 +239,8 @@ final class MavenJfrTestAttribution {
             List<TestWindow> testWindows,
             List<PhaseWindow> phaseWindows,
             List<RuntimeEvent> runtimeEvents,
-            List<SampleEvent> sampleEvents
+            List<SampleEvent> sampleEvents,
+            List<SharedRuntimeEvent> sharedRuntimeEvents
     ) {
         if (TEST_LIFECYCLE_EVENT.equals(event.getEventType().getName())) {
             lifecycleWindow(event).ifPresent(window -> {
@@ -230,6 +262,12 @@ final class MavenJfrTestAttribution {
         if (sampledFamily != null) {
             sampleEvent(event, sampledFamily).map(sampleEvent -> sampleEvent.withRecording(recording))
                     .ifPresent(sampleEvents::add);
+            return;
+        }
+        String sharedFamily = SHARED_JVM_EVENT_FAMILIES.get(event.getEventType().getName());
+        if (sharedFamily != null) {
+            sharedRuntimeEvent(event, sharedFamily).map(sharedEvent -> sharedEvent.withRecording(recording))
+                    .ifPresent(sharedRuntimeEvents::add);
         }
     }
 
@@ -266,6 +304,20 @@ final class MavenJfrTestAttribution {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(new SampleEvent(family, thread.getJavaThreadId(), event.getStartTime(), stackLocation(event)));
+    }
+
+    private static java.util.Optional<SharedRuntimeEvent> sharedRuntimeEvent(RecordedEvent event, String family) {
+        Duration duration = "GarbageCollection".equals(family) ? garbageCollectionPauseDuration(event) : event.getDuration();
+        return java.util.Optional.of(new SharedRuntimeEvent(family, event.getStartTime(), duration));
+    }
+
+    private static Duration garbageCollectionPauseDuration(RecordedEvent event) {
+        try {
+            return event.getDuration("sumOfPauses");
+        } catch (IllegalArgumentException ignored) {
+            // Older or vendor-specific recordings may not expose pause aggregation.
+            return event.getDuration();
+        }
     }
 
     private static String stackLocation(RecordedEvent event) {
@@ -355,6 +407,20 @@ final class MavenJfrTestAttribution {
         }
     }
 
+    private record SharedRuntimeEvent(String family, Instant start, Duration duration, Path recording) {
+        private SharedRuntimeEvent(String family, Instant start, Duration duration) {
+            this(family, start, duration, null);
+        }
+
+        private SharedRuntimeEvent withRecording(Path recording) {
+            return new SharedRuntimeEvent(family, start, duration, recording);
+        }
+
+        private Instant end() {
+            return start.plus(duration);
+        }
+    }
+
     record TestEvidence(
             String testIdentity,
             Map<String, Long> eventCounts,
@@ -384,9 +450,15 @@ final class MavenJfrTestAttribution {
         }
     }
 
-    record UnassignedEvidence(UnassignedScope scope, Map<String, Long> eventCounts, Duration duration) {
+    record UnassignedEvidence(
+            UnassignedScope scope,
+            Map<String, Long> eventCounts,
+            Map<String, Duration> eventDurations,
+            Duration duration
+    ) {
         UnassignedEvidence {
             eventCounts = Map.copyOf(eventCounts);
+            eventDurations = Map.copyOf(eventDurations);
         }
     }
 
@@ -459,15 +531,25 @@ final class MavenJfrTestAttribution {
             }
             for (UnassignedEvidence unassigned : unassignedEvidence) {
                 lines.add("[TestSleuth] JFR " + unassigned.scope.consoleLabel + " evidence: "
-                        + unassigned.eventCounts + " (" + unassigned.duration.toMillis() + " ms); not charged to a test");
+                        + unassigned.eventCounts + " (" + unassigned.duration.toMillis() + " ms); "
+                        + (unassigned.scope == UnassignedScope.SHARED_JVM
+                        ? "shared JVM work while tests were active, not charged to a test"
+                        : "not charged to a test")
+                        + garbageCollectionPauseDetail(unassigned));
             }
             return List.copyOf(lines);
+        }
+
+        private static String garbageCollectionPauseDetail(UnassignedEvidence evidence) {
+            Duration pauseDuration = evidence.eventDurations.get("GarbageCollection");
+            return pauseDuration == null ? "" : "; GarbageCollection pause time " + pauseDuration.toMillis() + " ms";
         }
     }
 
     enum UnassignedScope {
         CORRELATED_ASYNCHRONOUS("asynchronous"),
         SHARED_CONCURRENT("shared-concurrent"),
+        SHARED_JVM("shared JVM"),
         UNCLASSIFIED("unclassified");
 
         private final String consoleLabel;
@@ -535,6 +617,7 @@ final class MavenJfrTestAttribution {
     private static final class MutableUnassignedEvidence {
         private final UnassignedScope scope;
         private final Map<String, Long> eventCounts = new LinkedHashMap<>();
+        private final Map<String, Duration> eventDurations = new LinkedHashMap<>();
         private Duration duration = Duration.ZERO;
 
         private MutableUnassignedEvidence(UnassignedScope scope) {
@@ -542,12 +625,17 @@ final class MavenJfrTestAttribution {
         }
 
         private void add(RuntimeEvent event) {
-            eventCounts.merge(event.family, 1L, Long::sum);
-            duration = duration.plus(event.duration);
+            add(event.family, event.duration);
+        }
+
+        private void add(String family, Duration eventDuration) {
+            eventCounts.merge(family, 1L, Long::sum);
+            eventDurations.merge(family, eventDuration, Duration::plus);
+            duration = duration.plus(eventDuration);
         }
 
         private UnassignedEvidence toEvidence() {
-            return new UnassignedEvidence(scope, eventCounts, duration);
+            return new UnassignedEvidence(scope, eventCounts, eventDurations, duration);
         }
     }
 

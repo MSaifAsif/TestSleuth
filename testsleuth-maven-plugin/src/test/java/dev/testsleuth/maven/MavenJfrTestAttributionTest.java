@@ -104,4 +104,32 @@ final class MavenJfrTestAttributionTest {
                 MavenJfrTestAttribution.unassignedScopeForActiveTests(2)
         );
     }
+
+    @Test
+    void classifiesGarbageCollectionAsSharedJvmWorkWhenTestsAreActive() {
+        assertEquals(
+                MavenJfrTestAttribution.UnassignedScope.UNCLASSIFIED,
+                MavenJfrTestAttribution.sharedJvmScopeForActiveTests(0)
+        );
+        assertEquals(
+                MavenJfrTestAttribution.UnassignedScope.SHARED_JVM,
+                MavenJfrTestAttribution.sharedJvmScopeForActiveTests(1)
+        );
+    }
+
+    @Test
+    void reportsGarbageCollectionPauseTimeSeparatelyFromOtherUnownedWork() {
+        MavenJfrTestAttribution.UnassignedEvidence evidence = new MavenJfrTestAttribution.UnassignedEvidence(
+                MavenJfrTestAttribution.UnassignedScope.UNCLASSIFIED,
+                java.util.Map.of("GarbageCollection", 1L, "ThreadPark", 1L),
+                java.util.Map.of("GarbageCollection", Duration.ofMillis(4), "ThreadPark", Duration.ofMillis(900)),
+                Duration.ofMillis(904)
+        );
+        MavenJfrTestAttribution.Summary summary = new MavenJfrTestAttribution.Summary(
+                0, 0, 0, java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(evidence)
+        );
+
+        assertTrue(summary.consoleLines().stream()
+                .anyMatch(line -> line.contains("GarbageCollection pause time 4 ms")));
+    }
 }

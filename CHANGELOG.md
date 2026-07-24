@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - JFR attribution now reports up to two direct same-thread CPU and allocation samples as explicitly non-duration `JFR signal` evidence after ranked measured causes, including the sampled user-code location when available.
+- JFR reporting now explains directly attributed class loading as warm-up work and reports overlapping garbage-collection pause time as shared JVM evidence without charging a test.
 - Direct JFR cause explanations now include a user-code `class.method:line` location when the recorded runtime event has stack-trace evidence.
 - JFR reports now emit up to five ranked, directly measured runtime-cause explanations with targeted actions for fixed waits, parked/polling waits, socket I/O, lock contention, and file I/O.
 - JFR console output now reports unowned candidate events as asynchronous, shared-concurrent, or unclassified evidence without charging them to a test.

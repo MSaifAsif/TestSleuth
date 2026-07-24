@@ -95,6 +95,9 @@ final class MavenJfrRuntimeCauseExplainer {
             case "FileRead", "FileWrite" -> java.util.Optional.of(new Cause(
                     "file I/O", "reuse fixtures or replace disk access with a focused in-memory test seam"
             ));
+            case "ClassLoad" -> java.util.Optional.of(new Cause(
+                    "class loading and warm-up", "move one-time initialization out of repeated test paths and compare first-test versus steady-state cost"
+            ));
             default -> java.util.Optional.empty();
         };
     }
